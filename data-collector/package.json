@@ -1,0 +1,10 @@
+{
+  "name": "banglish-voice",
+  "private": true,
+  "description": "Mobile web page for collecting Banglish speech data (static site + Supabase).",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs && python3 -m http.server 8000 --directory public"
+  },
+  "engines": { "node": ">=18" }
+}

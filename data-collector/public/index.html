@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>Banglish Voice – record sentences</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header><h1>Banglish Voice</h1></header>
+
+  <section id="screen-consent" hidden>
+    <h2>Before you start</h2>
+    <div class="notice">
+      <p>We are collecting voice recordings to build speech recognition for <b>Banglish</b> (everyday Bangla mixed with English words).</p>
+      <ul>
+        <li>Your <b>audio recordings and the text you type</b> will be stored and used to train and test speech models.</li>
+        <li>We do <b>not</b> collect your name. A random anonymous ID is saved in this browser so your recordings can be grouped together.</li>
+        <li>Age range, region and phone model are optional.</li>
+        <li>Please don't say your own phone number, address, passwords or other private details.</li>
+        <li>Taking part is voluntary. You can stop at any time.</li>
+      </ul>
+      <p lang="bn" class="bn">আমরা <b>বাংলিশ</b> (ইংরেজি শব্দ মেশানো দৈনন্দিন বাংলা) কথা চেনার প্রযুক্তি তৈরির জন্য ভয়েস রেকর্ডিং সংগ্রহ করছি। আপনার <b>অডিও রেকর্ডিং ও আপনার লেখা টেক্সট</b> সংরক্ষণ করা হবে এবং স্পিচ মডেল প্রশিক্ষণ ও পরীক্ষার কাজে ব্যবহার করা হবে। আমরা আপনার <b>নাম নিই না</b>; আপনার রেকর্ডিংগুলো একসাথে রাখার জন্য এই ব্রাউজারে একটি বেনামি আইডি রাখা হয়। বয়স, এলাকা ও ফোন মডেল দেওয়া ঐচ্ছিক। রেকর্ডিংয়ে নিজের ফোন নম্বর, ঠিকানা বা পাসওয়ার্ডের মতো ব্যক্তিগত তথ্য বলবেন না। অংশগ্রহণ সম্পূর্ণ স্বেচ্ছামূলক; যেকোনো সময় থামাতে পারেন।</p>
+      <p id="contact" class="small" hidden></p>
+    </div>
+    <label class="check"><input type="checkbox" id="agree"> <span>I agree <span lang="bn">/ আমি সম্মত</span></span></label>
+    <button id="btn-consent" class="primary" disabled>Continue</button>
+  </section>
+
+  <section id="screen-profile" hidden>
+    <h2>About you <span class="small">(optional)</span></h2>
+    <label>Age range
+      <select id="age_range">
+        <option value="">Prefer not to say</option>
+        <option>Under 18</option><option>18-24</option><option>25-34</option><option>35-44</option>
+        <option>45-54</option><option>55-64</option><option>65+</option>
+      </select>
+    </label>
+    <label>Region / district
+      <select id="region"><option value="">Prefer not to say</option></select>
+    </label>
+    <label>Phone model
+      <input id="phone_model" type="text" maxlength="100" placeholder="e.g. Samsung A12" autocomplete="off">
+    </label>
+    <button id="btn-profile" class="primary">Start recording</button>
+    <button id="btn-newspeaker" class="link">Someone else using this phone? Start as a new speaker</button>
+  </section>
+
+  <section id="screen-record" hidden>
+    <div class="topbar"><span id="progress">0/50</span><button id="btn-skip" class="link">Skip ›</button></div>
+    <p class="hint">Read this sentence aloud:</p>
+    <p id="prompt" class="prompt"></p>
+    <div class="controls">
+      <button id="btn-record" class="record" aria-label="Record"><span id="record-label">Record</span><small id="timer"></small></button>
+      <div class="row">
+        <button id="btn-play" disabled>▶ Play</button>
+        <button id="btn-rerecord" disabled>↺ Re-record</button>
+      </div>
+      <audio id="player" preload="auto"></audio>
+    </div>
+    <label for="actual">What you actually said <span class="small">(edit if you said it differently)</span></label>
+    <textarea id="actual" rows="3" maxlength="1000" autocapitalize="off" spellcheck="false"></textarea>
+    <button id="btn-submit" class="primary" disabled>Submit &amp; next</button>
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="screen-done" hidden>
+    <h2>Thank you! <span lang="bn">ধন্যবাদ!</span></h2>
+    <p>You recorded <b id="done-count">0</b> sentences. You can close this page or keep going.</p>
+    <button id="btn-more" class="primary">Record more</button>
+  </section>
+
+  <section id="screen-error" hidden>
+    <h2>Something is not right</h2>
+    <p id="error-text"></p>
+  </section>
+
+  <footer id="footer" class="small" hidden>Anonymous ID: <code id="speaker"></code></footer>
+</main>
+<script src="config.js"></script>
+<script src="app.js" defer></script>
+</body>
+</html>

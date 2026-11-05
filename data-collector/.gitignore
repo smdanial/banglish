@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+public/config.js
+public/prompts.json
+dataset/
+__pycache__/
+node_modules/
+.vercel/
+.wrangler/
