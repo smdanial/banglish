@@ -1,0 +1,56 @@
+# Non-number vocabulary used by the rules. All entries lowercase.
+# Add a spelling to the matching list; multi-word entries are phrases.
+# Quote an entry that YAML could read as true/false (e.g. "no", "on", "yes").
+
+# ---------- money ----------
+currency: [tk, taka, takar, "৳", bdt, tka, teka, "টাকা", "টাকার"]
+# Words that say "this is about spending".
+expense_keywords: [khoroch, khorch, khorcha, khoros, hisab, hishab, bill, kinlam, kinsi, kinechi, kinchi, dilam, disi, dichi, bazar]
+# A number followed by one of these is a quantity, not a price ("2 kg alu 60 tk").
+quantity_units: [kg, kilo, kilogram, g, gm, gram, liter, litre, ltr, l, ml, ta, ti, khana, pis, piece, pieces, pcs, pc, dozen, dojon, hali, packet, pack, packet, bottle, botol, box, plate, cup, kap, jon, din, bochor, mash, ghonta, bar, tarikh, minute, min]
+# An item made of these words is a spoken total ("total 300", "shob mile 300").
+total_words: [total, mot, motu, sorbomot, shobmile, sobmile, mile, miliye, sobmilie]
+# Words before these in a segment are a header and are dropped ("aj bazar e khoroch holo: alu 50").
+expense_header_markers: [khoroch, khorch, khorcha, hisab, hishab, kinlam, kinsi, kinechi, kinchi]
+# Removed from the start/end of an item name.
+expense_strip: [aj, aaj, ajke, aajke, kal, kalke, amar, ami, khoroch, khorch, khorcha, holo, hoise, hoyse, hoyeche, gelo, gese, geche, laglo, lagse, lagche, legeche, dilam, disi, dichi, diyechi, kinlam, kinsi, kinechi, kinchi, dam, er, te, e, ar, aar, and, plus, o, shob, sob]
+# Words that separate items ("alu 50 ar piyaj 40").
+conjunctions: [ar, aar, and, plus, "&", r]
+
+# ---------- time ----------
+# A number followed by one of these is a clock time ("4 tay", "char ta", "5 baje").
+time_classifiers: [ta, tay, tai, tae, te, tar, tate, baje, bajhe, bajay, bajey, oclock]
+# Optional word between hour and minutes: "4 ta beje 30 minute".
+past_words: [beje, baje, bajhe]
+minute_words: [minute, minutes, minit, min, mins, mint]
+ampm:
+  am: [am]
+  pm: [pm]
+# Time-of-day words. am = morning, noon = dupur, pm = afternoon/evening, night = rat.
+periods:
+  am: [shokal, shokale, sokal, sokale, shokaal, shokaale, bhor, bhore, vor, vore, morning]
+  noon: [dupur, dupure, dupurer, dupor, dupore, noon]
+  pm: [bikal, bikale, bikel, bikele, bikaler, bikeler, bikale, shondha, shondhay, shondhar, sondha, sondhay, shondhya, sondhya, evening, afternoon]
+  night: [rat, raat, rate, raate, ratre, raatre, rater, raater, night]
+# Small words that can sit between a time-of-day word and the hour ("bikal e 4 tay").
+time_particles: [e, er, te, at, ei]
+# Day words are kept as spoken and shown before the time ("kal 4:00 PM").
+day_words: [aj, aaj, ajke, aajke, kal, kaal, kalke, kaalke, porshu, porshudin, today, tomorrow, tonight, shombar, sombar, mongolbar, budhbar, bishudbar, brihospotibar, shukrobar, sukrobar, shonibar, sonibar, robibar, monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+# "15 tarikh" is a date; kept with the day words.
+date_words: [tarikh, tarik, tarikhe, date]
+
+# ---------- schedule wording ----------
+# Any of these makes a sentence look like a schedule entry.
+event_words: [meeting, meet, class, appointment, doctor, dentist, exam, porikkha, interview, call, phone, zoom, party, dawat, lunch, dinner, breakfast, nasta, flight, train, bus, office, presentation, deadline, submission, namaz, jummah, gym, practice, tuition, coaching, lab, viva, quiz, session, birthday, biye, anniversary, khela, match, checkup, pickup, oshudh, medicine, alarm, program, seminar, workshop, interview, appointment]
+# Reminder phrases: removed from the note, and they also mark a schedule entry.
+reminder_phrases: ["mone koriye dio", "mone koriye diyo", "mone koriye diben", "mone koraye dio", "mone koraye diyo", "mone kore dio", "mone kore diyo", "remind kore dio", "remind koro", "remind korio", "remind korben", "remind me", "reminder", "remind"]
+# "<name> er sathe <event>" becomes "<Event> with <Name>".
+with_phrases: ["er sathe", "er shathe", "er sate", "er shate", "er songe", "r sathe", "r shathe", "sathe", "shathe", "songe", "with"]
+# Removed from schedule titles.
+schedule_strip: [ache, achhe, ase, asey, achey, ase, thakbe, ekta, amar, ami, amader, amake, please, plz, pls]
+# Words that end a name when reading backwards from "er sathe".
+name_stop: [e, te, er, ke, ar, aar, o, at]
+
+# ---------- cleanup ----------
+# Hesitation sounds that are always safe to remove.
+fillers: [um, umm, ummm, uh, uhh, uhm, hmm, hmmm, erm]

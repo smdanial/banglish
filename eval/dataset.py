@@ -77,11 +77,15 @@ def _as_list(v):
 
 def select_split(clips, splits_file, split_name: str):
     """Keep only clips in `split_name`. Accepts these splits.json shapes:
-       {"test": [ids...], "train": [...]}, {"splits": {...}}, {"test": {"speakers": [...]}}, {"<clip path>": "test"}
+       make_splits.py output ({"clips": {"test": [paths]}, "speakers": {...}, ...}; uses "clips", so clips
+       left out with --exclude stay out), {"test": [ids...], "train": [...]}, {"splits": {...}},
+       {"test": {"speakers": [...]}}, {"<clip path>": "test"}
     where ids may be speaker_ids, clip paths (as in the manifest) or file names."""
     data = json.loads(Path(splits_file).read_text(encoding="utf-8"))
     if isinstance(data, dict) and isinstance(data.get("splits"), dict):
         data = data["splits"]
+    elif isinstance(data, dict) and isinstance(data.get("clips"), dict) and split_name in data["clips"]:
+        data = data["clips"]
     if not isinstance(data, dict):
         raise SystemExit(f"{splits_file}: expected a JSON object")
     if split_name in data:

@@ -1,0 +1,389 @@
+# Test cases for format_note(). Each case: id, input, type, expected.
+# type is schedule | expenses | other. For "other", matched must be False and
+# expected is the lightly cleaned input. Optional: notes_contains (text that must
+# appear in the "notes" field). Lines in `expected` are separated with \n.
+
+# ---------------- schedule ----------------
+- id: s01
+  input: "akash er sathe meeting ache bikal 4 tay"
+  type: schedule
+  expected: "Meeting with Akash - 4:00 PM"
+- id: s02
+  input: "kal shokal 9 tay doctor appointment"
+  type: schedule
+  expected: "Doctor appointment - kal 9:00 AM"
+- id: s03
+  input: "rahim er sathe lunch dupur 1 tay"
+  type: schedule
+  expected: "Lunch with Rahim - 1:00 PM"
+- id: s04
+  input: "dupur 12 tay class ache"
+  type: schedule
+  expected: "Class - 12:00 PM"
+- id: s05
+  input: "dupure karim er sathe lunch"
+  type: schedule
+  expected: "Lunch with Karim - 12:00 PM"
+  notes_contains: "dupur read as 12:00 PM"
+- id: s06
+  input: "shondha 7 tay party ache"
+  type: schedule
+  expected: "Party - 7:00 PM"
+- id: s07
+  input: "rat 10 tay mone koriye dio oshudh khete hobe"
+  type: schedule
+  expected: "Oshudh khete hobe - 10:00 PM"
+- id: s08
+  input: "bikal 4:30 e nusrat er sathe zoom call"
+  type: schedule
+  expected: "Zoom call with Nusrat - 4:30 PM"
+- id: s09
+  input: "meeting ache bikal 4 ta 30 e"
+  type: schedule
+  expected: "Meeting - 4:30 PM"
+- id: s10
+  input: "sharey 4 tay bikele tamim er sathe meeting"
+  type: schedule
+  expected: "Meeting with Tamim - 4:30 PM"
+- id: s11
+  input: "paune 5 tay bikal e class"
+  type: schedule
+  expected: "Class - 4:45 PM"
+- id: s12
+  input: "soa 4 tay bikal e interview"
+  type: schedule
+  expected: "Interview - 4:15 PM"
+- id: s13
+  input: "bikal char tay sumon er sathe meeting"
+  type: schedule
+  expected: "Meeting with Sumon - 4:00 PM"
+- id: s14
+  input: "shokal sat tay gym"
+  type: schedule
+  expected: "Gym - 7:00 AM"
+- id: s15
+  input: "kal rat 9 tay biye te dawat"
+  type: schedule
+  expected: "Biye te dawat - kal 9:00 PM"
+- id: s16
+  input: "meeting 3 tay"
+  type: schedule
+  expected: "Meeting - 3:00 PM"
+  notes_contains: "AM/PM not said"
+- id: s17
+  input: "class 10 tay"
+  type: schedule
+  expected: "Class - 10:00 AM"
+  notes_contains: "guessed AM"
+- id: s18
+  input: "meeting at 5 pm with boss"
+  type: schedule
+  expected: "Meeting with Boss - 5:00 PM"
+- id: s19
+  input: "interview 11 am e"
+  type: schedule
+  expected: "Interview - 11:00 AM"
+- id: s20
+  input: "16:30 e presentation"
+  type: schedule
+  expected: "Presentation - 4:30 PM"
+  notes_contains: "24-hour"
+- id: s21
+  input: "rat 12 tay flight"
+  type: schedule
+  expected: "Flight - 12:00 AM"
+  notes_contains: "midnight"
+- id: s22
+  input: "rat 2 tay train dhorte hobe"
+  type: schedule
+  expected: "Train dhorte hobe - 2:00 AM"
+  notes_contains: "after midnight"
+- id: s23
+  input: "akash ar rahim er sathe meeting bikal 5 tay"
+  type: schedule
+  expected: "Meeting with Akash and Rahim - 5:00 PM"
+- id: s24
+  input: "akasher sathe meeting ache bikal 4 tay"
+  type: schedule
+  expected: "Meeting with Akash - 4:00 PM"
+- id: s25
+  input: "porshu shokal 10 tay exam"
+  type: schedule
+  expected: "Exam - porshu 10:00 AM"
+- id: s26
+  input: "15 tarikh e bikal 3 tay doctor"
+  type: schedule
+  expected: "Doctor - 15 tarikh 3:00 PM"
+- id: s27
+  input: "bikal 5 tay mone koriye dio"
+  type: schedule
+  expected: "Reminder - 5:00 PM"
+- id: s28
+  input: "remind me shondhay 6 tay ammu ke call dite hobe"
+  type: schedule
+  expected: "Ammu ke call dite hobe - 6:00 PM"
+- id: s29
+  input: "shokal 8 ta 15 te tuition"
+  type: schedule
+  expected: "Tuition - 8:15 AM"
+- id: s30
+  input: "bikal char ta tirish minute e coaching"
+  type: schedule
+  expected: "Coaching - 4:30 PM"
+- id: s31
+  input: "ajke shondha 7:45 e birthday party"
+  type: schedule
+  expected: "Birthday party - ajke 7:45 PM"
+- id: s32
+  input: "shombar dupur 2 tay dentist"
+  type: schedule
+  expected: "Dentist - shombar 2:00 PM"
+- id: s33
+  input: "ummm  kal  bikal 3 tay   meeting ache"
+  type: schedule
+  expected: "Meeting - kal 3:00 PM"
+- id: s34
+  input: "Akash er sathe Meeting ache bikal 4 tay."
+  type: schedule
+  expected: "Meeting with Akash - 4:00 PM"
+- id: s35
+  input: "bhore 5 tay namaz"
+  type: schedule
+  expected: "Namaz - 5:00 AM"
+- id: s36
+  input: "sharey 9 tay shokale class"
+  type: schedule
+  expected: "Class - 9:30 AM"
+- id: s37
+  input: "bikal 4tay meeting"
+  type: schedule
+  expected: "Meeting - 4:00 PM"
+- id: s38
+  input: "rat 8 ta 30 e dinner tanvir er sathe"
+  type: schedule
+  expected: "Dinner with Tanvir - 8:30 PM"
+- id: s39
+  input: "der tay dupure lunch meeting"
+  type: schedule
+  expected: "Lunch meeting - 1:30 PM"
+- id: s40
+  input: "kal 7 tay shokale flight"
+  type: schedule
+  expected: "Flight - kal 7:00 AM"
+
+# ---------------- expenses ----------------
+- id: e01
+  input: "alu 50 tk, piyaj 40 tk, dim 120 tk"
+  type: expenses
+  expected: "alu - 50\npiyaj - 40\ndim - 120\ntotal - 210"
+- id: e02
+  input: "rickshaw bhara 60 taka"
+  type: expenses
+  expected: "rickshaw bhara - 60"
+- id: e03
+  input: "chal 500 taka ar dal 120 taka"
+  type: expenses
+  expected: "chal - 500\ndal - 120\ntotal - 620"
+- id: e04
+  input: "alu pochash taka, piyaj challish taka"
+  type: expenses
+  expected: "alu - 50\npiyaj - 40\ntotal - 90"
+- id: e05
+  input: "bhara dui hajar pach sho taka, current bill ek hajar taka"
+  type: expenses
+  expected: "bhara - 2500\ncurrent bill - 1000\ntotal - 3500"
+- id: e06
+  input: "alu 50, piyaj 40, dim 120"
+  type: expenses
+  expected: "alu - 50\npiyaj - 40\ndim - 120\ntotal - 210"
+- id: e07
+  input: "alu 50 tk, piyaj 40 tk, total 100 tk"
+  type: expenses
+  expected: "alu - 50\npiyaj - 40\ntotal - 90"
+  notes_contains: "spoken total 100 does not match computed total 90"
+- id: e08
+  input: "cha 20 tk, singara 30 tk, mot 50 tk"
+  type: expenses
+  expected: "cha - 20\nsingara - 30\ntotal - 50"
+  notes_contains: "spoken total matches"
+- id: e09
+  input: "2 kg alu 60 tk, 1 dozen dim 140 tk"
+  type: expenses
+  expected: "2 kg alu - 60\n1 dozen dim - 140\ntotal - 200"
+- id: e10
+  input: "uber 350 tk ar lunch 250 tk"
+  type: expenses
+  expected: "uber - 350\nlunch - 250\ntotal - 600"
+- id: e11
+  input: "৳150 mobile recharge"
+  type: expenses
+  expected: "mobile recharge - 150"
+- id: e12
+  input: "bazar khoroch: maach 450 tk, sobji 120 tk"
+  type: expenses
+  expected: "maach - 450\nsobji - 120\ntotal - 570"
+- id: e13
+  input: "aj bazar e khoroch holo alu 50 tk piyaj 40 tk"
+  type: expenses
+  expected: "alu - 50\npiyaj - 40\ntotal - 90"
+- id: e14
+  input: "alu 50 tk, piyaj, dim 120 tk"
+  type: expenses
+  expected: "alu - 50\npiyaj - ?\ndim - 120\ntotal - 170"
+  notes_contains: "no amount for 'piyaj'"
+- id: e15
+  input: "bus bhara 1,200tk"
+  type: expenses
+  expected: "bus bhara - 1200"
+- id: e16
+  input: "chal 2k, tel 350 tk"
+  type: expenses
+  expected: "chal - 2000\ntel - 350\ntotal - 2350"
+- id: e17
+  input: "dudh ashi taka, pauruti 60 taka"
+  type: expenses
+  expected: "dudh - 80\npauruti - 60\ntotal - 140"
+- id: e18
+  input: "medicine tinsho taka ar doctor fee pachsho taka"
+  type: expenses
+  expected: "medicine - 300\ndoctor fee - 500\ntotal - 800"
+- id: e19
+  input: "kola 12 ta 120 taka"
+  type: expenses
+  expected: "kola 12 ta - 120"
+- id: e20
+  input: "net bill 1000 tk, gas bill 975 tk, pani bill 300 tk, total 2200"
+  type: expenses
+  expected: "net bill - 1000\ngas bill - 975\npani bill - 300\ntotal - 2275"
+  notes_contains: "does not match"
+- id: e21
+  input: "mangsho der hajar taka, mach sharey tin sho taka"
+  type: expenses
+  expected: "mangsho - 1500\nmach - 350\ntotal - 1850"
+- id: e22
+  input: "rickshaw te gelo 40 taka"
+  type: expenses
+  expected: "rickshaw - 40"
+- id: e23
+  input: "boi 450/-, khata 120/-"
+  type: expenses
+  expected: "boi - 450\nkhata - 120\ntotal - 570"
+- id: e24
+  input: "cha dosh taka, biscuit kuri taka"
+  type: expenses
+  expected: "cha - 10\nbiscuit - 20\ntotal - 30"
+- id: e25
+  input: "alu ৫০ টাকা tk, piyaj 40 tk"
+  type: expenses
+  expected: "alu - 50\npiyaj - 40\ntotal - 90"
+- id: e26
+  input: "taxi 300 taka plus toll 50 taka"
+  type: expenses
+  expected: "taxi - 300\ntoll - 50\ntotal - 350"
+- id: e27
+  input: "khabar 1 hajar 200 taka"
+  type: expenses
+  expected: "khabar - 1200"
+- id: e28
+  input: "shirt 1500 tk, pant 1800 tk, shob mile 3300 tk"
+  type: expenses
+  expected: "shirt - 1500\npant - 1800\ntotal - 3300"
+  notes_contains: "spoken total matches"
+- id: e29
+  input: "fuchka 60 tk; chotpoti 50 tk"
+  type: expenses
+  expected: "fuchka - 60\nchotpoti - 50\ntotal - 110"
+- id: e30
+  input: "ummm alu 50 tk, uh piyaj 40 tk"
+  type: expenses
+  expected: "alu - 50\npiyaj - 40\ntotal - 90"
+- id: e31
+  input: "dim at taka, kola choy taka"
+  type: expenses
+  expected: "dim - 8\nkola - 6\ntotal - 14"
+- id: e32
+  input: "rent 15000 tk"
+  type: expenses
+  expected: "rent - 15000"
+
+# ---------------- other (must return matched=False) ----------------
+- id: o01
+  input: "ami bhalo achi"
+  type: other
+  expected: "ami bhalo achi"
+- id: o02
+  input: "tumi kemon acho?"
+  type: other
+  expected: "tumi kemon acho?"
+- id: o03
+  input: "kal dekha hobe"
+  type: other
+  expected: "kal dekha hobe"
+- id: o04
+  input: "akash er sathe meeting ache"
+  type: other
+  expected: "akash er sathe meeting ache"
+- id: o05
+  input: "alu piyaj dim kinte hobe"
+  type: other
+  expected: "alu piyaj dim kinte hobe"
+- id: o06
+  input: "bikal e ashbo"
+  type: other
+  expected: "bikal e ashbo"
+- id: o07
+  input: "5 jon ashbe party te"
+  type: other
+  expected: "5 jon ashbe party te"
+- id: o08
+  input: "amar number 01712345678"
+  type: other
+  expected: "amar number 01712345678"
+- id: o09
+  input: "umm   aj onek   gorom"
+  type: other
+  expected: "aj onek gorom"
+- id: o10
+  input: "dui din por dekha korbo"
+  type: other
+  expected: "dui din por dekha korbo"
+- id: o11
+  input: "alu 50"
+  type: other
+  expected: "alu 50"
+- id: o12
+  input: "eta noy, oita"
+  type: other
+  expected: "eta noy, oita"
+- id: o13
+  input: ""
+  type: other
+  expected: ""
+- id: o14
+  input: "bikal 4 tay rahim ke 500 taka dite hobe"
+  type: other
+  expected: "bikal 4 tay rahim ke 500 taka dite hobe"
+- id: o15
+  input: "amar 3 ta class ache"
+  type: other
+  expected: "amar 3 ta class ache"
+- id: o16
+  input: "aj 300 taka khoroch holo"
+  type: other
+  expected: "aj 300 taka khoroch holo"
+- id: e33
+  input: "chal 65 taka kg, 5 kg nilam 325 taka"
+  type: expenses
+  expected: "chal - 65\n5 kg nilam - 325\ntotal - 390"
+- id: e34
+  input: "phone bill five hundred taka, wifi 1000 tk"
+  type: expenses
+  expected: "phone bill - 500\nwifi - 1000\ntotal - 1500"
+- id: s41
+  input: "nadia apu r sathe coffee bikal 5 tay"
+  type: schedule
+  expected: "Coffee with Nadia Apu - 5:00 PM"
+- id: s42
+  input: "kal dupur 3 ta 15 te viva"
+  type: schedule
+  expected: "Viva - kal 3:15 PM"

@@ -1,0 +1,230 @@
+# Banglish number vocabulary. All spellings lowercase.
+# To add a spelling: put it under the right section as `spelling: value`.
+# Quote a spelling that YAML could read as true/false (e.g. "no", "on", "yes").
+
+# Plain number words.
+words:
+  shunno: 0
+  shuno: 0
+  zero: 0
+  ek: 1
+  aek: 1
+  dui: 2
+  tin: 3
+  teen: 3
+  char: 4
+  chaar: 4
+  pach: 5
+  panch: 5
+  paach: 5
+  paanch: 5
+  choy: 6
+  chhoy: 6
+  choe: 6
+  chhoe: 6
+  shat: 7
+  sat: 7
+  saat: 7
+  shaat: 7
+  at: 8
+  aat: 8
+  aath: 8
+  noy: 9
+  noi: 9
+  nou: 9
+  dosh: 10
+  dos: 10
+  egaro: 11
+  egharo: 11
+  baro: 12
+  tero: 13
+  choddo: 14
+  chouddo: 14
+  ponero: 15
+  pondro: 15
+  sholo: 16
+  solo: 16
+  shotero: 17
+  sotero: 17
+  atharo: 18
+  unish: 19
+  kuri: 20
+  bish: 20
+  bis: 20
+  ekush: 21
+  baish: 22
+  teish: 23
+  chobbish: 24
+  pochish: 25
+  ponchish: 25
+  chabbish: 26
+  satash: 27
+  athash: 28
+  unotrish: 29
+  tirish: 30
+  trish: 30
+  tiris: 30
+  ekotrish: 31
+  batrish: 32
+  tetrish: 33
+  choutrish: 34
+  poitrish: 35
+  chhotrish: 36
+  saitrish: 37
+  atotrish: 38
+  unochollish: 39
+  challish: 40
+  chollish: 40
+  challis: 40
+  chollis: 40
+  ekchollish: 41
+  beyallish: 42
+  tetallish: 43
+  chuallish: 44
+  poytallish: 45
+  chhechollish: 46
+  satchollish: 47
+  atchollish: 48
+  unoponchash: 49
+  pochash: 50
+  pachash: 50
+  ponchash: 50
+  panchash: 50
+  pochas: 50
+  ponchas: 50
+  ekanno: 51
+  bahanno: 52
+  tippanno: 53
+  chuanno: 54
+  pochpanno: 55
+  chhappanno: 56
+  satanno: 57
+  athanno: 58
+  unoshatt: 59
+  # 60. Note: "shaat" is used for 7 above, so 60 uses these spellings.
+  shatth: 60
+  shatt: 60
+  shaith: 60
+  ekshotti: 61
+  bashotti: 62
+  teshotti: 63
+  chowshotti: 64
+  poyshotti: 65
+  chheshotti: 66
+  satshotti: 67
+  atshotti: 68
+  unoshottor: 69
+  shotor: 70
+  shottor: 70
+  sottor: 70
+  ekattor: 71
+  bahattor: 72
+  tiyattor: 73
+  chuyattor: 74
+  pochattor: 75
+  chhiyattor: 76
+  satattor: 77
+  athattor: 78
+  unoashi: 79
+  ashi: 80
+  aashi: 80
+  ekashi: 81
+  birashi: 82
+  tirashi: 83
+  churashi: 84
+  pochashi: 85
+  chhiyashi: 86
+  satashi: 87
+  atashi: 88
+  unonobboi: 89
+  nobboi: 90
+  nobbui: 90
+  nobbai: 90
+  nobboy: 90
+  ekanobboi: 91
+  biranobboi: 92
+  tiranobboi: 93
+  churanobboi: 94
+  pochanobboi: 95
+  chhiyanobboi: 96
+  satanobboi: 97
+  atanobboi: 98
+  niranobboi: 99
+
+  # English number words (people often mix them in)
+  one: 1
+  two: 2
+  three: 3
+  four: 4
+  five: 5
+  six: 6
+  seven: 7
+  eight: 8
+  nine: 9
+  ten: 10
+  eleven: 11
+  twelve: 12
+  fifteen: 15
+  twenty: 20
+  thirty: 30
+  forty: 40
+  fifty: 50
+  sixty: 60
+  seventy: 70
+  eighty: 80
+  ninety: 90
+
+# Words that multiply the number before them: "dui hajar" = 2000, "pach sho" = 500.
+# Joined forms also work: "pachsho" = 500, "duihajar" = 2000.
+multipliers:
+  sho: 100
+  shoh: 100
+  sow: 100
+  shoto: 100
+  hundred: 100
+  hajar: 1000
+  hazar: 1000
+  hajaar: 1000
+  hazaar: 1000
+  thousand: 1000
+  lakh: 100000
+  lac: 100000
+  lak: 100000
+
+# Words that change the next number: "sharey 4" = 4.5 (4:30), "soa 4" = 4.25 (4:15),
+# "paune 5" = 4.75 (4:45), "sharey tin hajar" = 3500.
+modifiers:
+  sharey: 0.5
+  share: 0.5
+  sare: 0.5
+  saare: 0.5
+  sarhe: 0.5
+  shaare: 0.5
+  soa: 0.25
+  shoa: 0.25
+  sowa: 0.25
+  shoya: 0.25
+  paune: -0.25
+  poune: -0.25
+  pone: -0.25
+
+# Fraction words, only read as numbers before a multiplier or a time word:
+# "der sho" = 150, "arai hajar" = 2500, "der tay" = 1:30.
+fractions:
+  der: 1.5
+  dedh: 1.5
+  arai: 2.5
+  adai: 2.5
+  aray: 2.5
+
+# Short forms that only appear joined to a multiplier: "dusho" = 200.
+compound_prefixes:
+  du: 2
+
+# Number words that are also everyday words ("at" in English, "noy" = "is not").
+# They count as numbers only when followed by a multiplier, currency, unit or time word.
+ambiguous:
+  - at
+  - noy
+  - solo
+  - one

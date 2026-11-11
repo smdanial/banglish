@@ -51,3 +51,15 @@ def test_unknown_split_fails(tmp_path):
     (tmp_path / "splits.json").write_text(json.dumps({"train": ["spk0"]}))
     with pytest.raises(SystemExit):
         select_split(clips, tmp_path / "splits.json", "test")
+
+
+
+def test_make_splits_output_uses_clip_list(tmp_path):
+    # shape written by data-collector/scripts/make_splits.py; wavs/3.wav was left out with --exclude
+    make_data(tmp_path, ROWS)
+    clips, _, _ = load_manifest(tmp_path)
+    (tmp_path / "splits.json").write_text(json.dumps({
+        "created_at": "x", "excluded_clips": 1,
+        "speakers": {"train": ["spk1", "spk2"], "dev": [], "test": ["spk0"]},
+        "summary": {}, "clips": {"train": [], "dev": [], "test": ["wavs/0.wav"]}}))
+    assert [c.path for c in select_split(clips, tmp_path / "splits.json", "test")] == ["wavs/0.wav"]

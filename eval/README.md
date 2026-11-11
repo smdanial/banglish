@@ -35,6 +35,6 @@ The raw model output is kept in `<model>/hypotheses.csv`.
 
 **Options:** `--split dev`, `--all` (ignore splits), `--limit 20` (quick try), `--output other/folder`, `--no-isolate`.
 
-**splits.json:** `make_splits.py` is not in the repo yet, so these shapes are accepted: `{"test": [...], "train": [...]}`, `{"splits": {...}}`, `{"test": {"speakers": [...]}}`, or `{"<clip path>": "test"}`. The entries can be speaker_ids, manifest paths or file names.
+**splits.json:** the file written by `data-collector/scripts/make_splits.py` is read directly (its `clips` list is used, so clips left out with `--exclude` stay out). Also accepted: `{"test": [...], "train": [...]}`, `{"splits": {...}}`, `{"test": {"speakers": [...]}}`, or `{"<clip path>": "test"}`; entries can be speaker_ids, manifest paths or file names.
 
 **Privacy:** `eval/results/` and `eval/cache/` contain transcripts of private recordings. Both are gitignored, so don't commit or share them. No audio file is ever committed (`*.wav` etc. are gitignored).

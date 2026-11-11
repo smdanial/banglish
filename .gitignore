@@ -18,3 +18,5 @@ eval/cache/
 __pycache__/
 *.pyc
 .pytest_cache/
+*.mp4
+*.egg-info/
