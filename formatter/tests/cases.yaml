@@ -387,3 +387,57 @@
   input: "kal dupur 3 ta 15 te viva"
   type: schedule
   expected: "Viva - kal 3:15 PM"
+
+# ---------------- regressions from PR #3 review ----------------
+# A count or quantity after the hour is not minutes.
+- id: s43
+  input: "shokal 9 tay 2 ta class"
+  type: schedule
+  expected: "2 ta class - 9:00 AM"
+- id: s44
+  input: "shokal 9 tay 2 kg alu kinbo"
+  type: schedule
+  expected: "2 kg alu kinbo - 9:00 AM"
+# "paune 1" is 12:45 and takes the spoken period (afternoon -> PM).
+- id: s45
+  input: "bikal paune 1 tay class"
+  type: schedule
+  expected: "Class - 12:45 PM"
+# A literal 0:45 is still just after midnight.
+- id: s46
+  input: "meeting 0:45 e"
+  type: schedule
+  expected: "Meeting - 12:45 AM"
+- id: s47
+  input: "meeting 24:00 e"
+  type: schedule
+  expected: "Meeting - 12:00 AM"
+# A "12.50" price is not a clock time.
+- id: e35
+  input: "alu 12.50 taka, dim 30 taka"
+  type: expenses
+  expected: "alu - 12.5\ndim - 30\ntotal - 42.5"
+# Time + money in one sentence: leave it to the fallback.
+- id: o17
+  input: "bikal 4 tay doctor fee 500 taka"
+  type: other
+  expected: "bikal 4 tay doctor fee 500 taka"
+- id: o18
+  input: "meeting 4:30 e 500 taka"
+  type: other
+  expected: "meeting 4:30 e 500 taka"
+# Two appointments with their own times do not fit one note.
+- id: o19
+  input: "meeting 10:00 am, call 4:00 pm"
+  type: other
+  expected: "meeting 10:00 am, call 4:00 pm"
+  notes_contains: "best guess: schedule"
+# Impossible clock readings are not times.
+- id: o20
+  input: "meeting 25:99 e"
+  type: other
+  expected: "meeting 25:99 e"
+- id: o21
+  input: "meeting 24:30 e"
+  type: other
+  expected: "meeting 24:30 e"

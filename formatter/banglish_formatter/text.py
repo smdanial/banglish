@@ -26,8 +26,14 @@ class Token:
 
 
 def is_clock(token: Token):
+    """(hour, minute) for a valid "4:30" / "16.30" token; 24:00 is allowed as midnight."""
     m = _TIME_RE.match(token.text)
-    return (int(m.group(1)), int(m.group(2))) if m else None
+    if not m:
+        return None
+    h, mi = int(m.group(1)), int(m.group(2))
+    if mi > 59 or h > 24 or (h == 24 and mi):
+        return None
+    return h, mi
 
 
 def is_digits(token: Token) -> bool:

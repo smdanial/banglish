@@ -57,8 +57,10 @@ def _find_times(tokens: list[Token], vocab: Vocab) -> list[_Time]:
             if m < n and lows[m] in vocab.past_words:
                 m += 1
             ms = starts.get(m)
-            if ms and not ms.fractional and float(ms.value).is_integer() and 0 <= ms.value < 60 \
-                    and not (ms.end < n and lows[ms.end] in vocab.currency):
+            after = lows[ms.end] if ms and ms.end < n else None
+            # "9 tay 2 ta class" / "9 tay 2 kg alu": a count or quantity, not minutes
+            counted = after in vocab.currency or (after in vocab.quantity_units and after not in vocab.minute_words)
+            if ms and not ms.fractional and float(ms.value).is_integer() and 0 <= ms.value < 60 and not counted:
                 minute, end = int(ms.value), ms.end
                 if end < n and lows[end] in vocab.minute_words:
                     end += 1
@@ -80,7 +82,7 @@ def _find_times(tokens: list[Token], vocab: Vocab) -> list[_Time]:
         if s.fractional:
             whole = int(hour)
             minute = round((hour - whole) * 60)
-            hour = whole
+            hour = whole or 12  # "paune 1" = 12:45 on a 12-hour clock
         if not float(hour).is_integer() or not 0 <= hour <= 24:
             continue
         out.append(_Time(s.start, end, hour, minute, score, ap))
@@ -160,6 +162,7 @@ def schedule_rule(tokens: list[Token], vocab: Vocab) -> Candidate | None:
 
     if times:
         best = max(times, key=lambda t: (t.score, -t.start))
+        other_times = [t for t in times if t.score >= 2 and (t.end <= best.start or t.start >= best.end)]
         for k in range(best.start, best.end):
             removed[k] = True
         if best.start > 0 and lows[best.start - 1] == "at":
@@ -169,7 +172,7 @@ def schedule_rule(tokens: list[Token], vocab: Vocab) -> Candidate | None:
             removed[k] = True
             k += 1
     else:
-        best = None
+        best, other_times = None, []
 
     # time-of-day words (and a particle right after them) are folded into the time
     period, period_dist = None, n + 1
@@ -283,7 +286,11 @@ def schedule_rule(tokens: list[Token], vocab: Vocab) -> Candidate | None:
         conf += 0.05
     if best.score <= 1 and not has_period_word:
         conf -= 0.1
+    # one note holds one time and no money; leave mixed sentences to the caller's fallback
+    if best.score and other_times:
+        conf = min(conf, 0.4)
+        notes.append("more than one time mentioned")
     if any(low in vocab.currency for low in lows):
-        conf -= 0.2
+        conf = min(conf, 0.4)
         notes.append("sentence also mentions money")
     return Candidate("schedule", [f"{title} - {when}"], round(min(conf, 0.97), 2), notes)
