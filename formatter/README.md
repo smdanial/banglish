@@ -36,4 +36,4 @@ format_note("rat 10 tay mone koriye dio oshudh khete hobe")
   No time word → guess (7-11 AM, 12-6 PM), lower confidence, and a note. `4:30`, `16:30`, `4 ta 30`, `sharey 4`, `paune 5`, `soa 4`, `der tay` (1:30) all work.
 - Day words (`kal`, `porshu`, `shombar`, `15 tarikh`) are kept as spoken: `Meeting - kal 3:00 PM`.
 - Expenses: `item - amount` per line; tk/taka/৳ removed; quantities stay in the item (`2 kg alu - 60`); a missing amount shows `- ?` and is left out of the total.
-- Sentences that mix a clock time and money ("bikal 4 tay rahim ke 500 taka dite hobe") are returned as `other` on purpose.
+- Sentences that mix a clock time and money ("bikal 4 tay rahim ke 500 taka dite hobe"), sentences with two separate times ("meeting 10:00 am, call 4:00 pm"), and impossible clocks (`25:99`) are returned as `other` on purpose.

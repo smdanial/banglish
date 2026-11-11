@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..numbers import find_numbers
-from ..text import Token, fmt_number
+from ..text import Token, fmt_number, is_clock
 from ..vocab import Vocab
 from .base import Candidate
 
@@ -55,6 +55,8 @@ def expenses_rule(tokens: list[Token], vocab: Vocab) -> Candidate | None:
             time_like.add(k)
     for k in time_like:
         del spans[k]
+    # "meeting 4:30 e" (a "12.50" price is not a clock)
+    has_clock = any(":" in t.text and is_clock(t) for t in tokens)
 
     items: list[_Item] = []
     cur: list[Token] = []
@@ -145,7 +147,7 @@ def expenses_rule(tokens: list[Token], vocab: Vocab) -> Candidate | None:
         conf -= 0.15
     if any(not it.tokens for it in priced):
         conf -= 0.15
-    if time_like:
+    if time_like or has_clock:
         conf -= 0.3
         notes.append("sentence also has a clock time")
     return Candidate("expenses", lines, round(min(conf, 0.97), 2), notes)

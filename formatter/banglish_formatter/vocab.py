@@ -8,7 +8,11 @@ from pathlib import Path
 
 import yaml
 
-DATA_DIR = Path(os.environ.get("BANGLISH_FORMATTER_DATA", Path(__file__).resolve().parent.parent / "data"))
+_HERE = Path(__file__).resolve().parent
+# Installed wheel: banglish_formatter/data/. Source checkout: formatter/data/.
+_DEFAULT_DATA = next((d for d in (_HERE / "data", _HERE.parent / "data") if (d / "numbers.yaml").is_file()),
+                     _HERE.parent / "data")
+DATA_DIR = Path(os.environ.get("BANGLISH_FORMATTER_DATA", _DEFAULT_DATA))
 
 
 def _load(name: str) -> dict:

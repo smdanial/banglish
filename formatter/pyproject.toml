@@ -13,7 +13,14 @@ dependencies = ["PyYAML>=6"]
 test = ["pytest>=7"]
 
 [tool.setuptools]
-packages = ["banglish_formatter", "banglish_formatter.rules"]
+packages = ["banglish_formatter", "banglish_formatter.rules", "banglish_formatter.data"]
+
+# formatter/data/*.yaml is installed as banglish_formatter/data/ so a wheel works outside the checkout.
+[tool.setuptools.package-dir]
+"banglish_formatter.data" = "data"
+
+[tool.setuptools.package-data]
+"banglish_formatter.data" = ["*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
