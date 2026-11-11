@@ -23,7 +23,8 @@ from pathlib import Path
 from sbhttp import ROOT, Client, env, load_dotenv
 
 PAGE = 1000
-MANIFEST_FIELDS = ["path", "speaker_id", "prompt_text", "actual_text", "category", "duration"]
+MANIFEST_FIELDS = ["path", "speaker_id", "prompt_text", "actual_text", "category", "duration",
+                   "prompt_id", "phone_model", "age_range", "region", "recording_id", "created_at"]
 
 
 def fetch_rows(client):
@@ -111,6 +112,12 @@ def main():
                 "actual_text": row["actual_text"],
                 "category": row.get("category") or categories.get(row["prompt_id"], ""),
                 "duration": f"{wav_duration(dst):.3f}",
+                "prompt_id": row["prompt_id"],
+                "phone_model": row.get("phone_model") or "",
+                "age_range": row.get("age_range") or "",
+                "region": row.get("region") or "",
+                "recording_id": row["id"],
+                "created_at": row["created_at"],
             })
             if i % 50 == 0:
                 print(f"  {i}/{len(rows)}")

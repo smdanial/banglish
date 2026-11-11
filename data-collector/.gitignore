@@ -8,3 +8,13 @@ __pycache__/
 node_modules/
 .vercel/
 .wrangler/
+# audio and generated reports are never committed
+*.wav
+*.webm
+*.m4a
+*.mp4
+*.ogg
+*.mp3
+reports/
+splits.json
+tests/sample_data/wavs/

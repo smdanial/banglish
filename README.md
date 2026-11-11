@@ -16,6 +16,18 @@ Send the **production** https link (not a Vercel preview link). Ask people to op
 ### Exporting the data
 `python3 data-collector/scripts/export_dataset.py` (needs ffmpeg and the admin key in `data-collector/.env`) writes 16 kHz mono WAVs and `manifest.csv`. Details: [data-collector/README.md](data-collector/README.md#exporting-the-dataset).
 
+## Dataset quality check and splits (Task C3)
+
+Run these on your laptop after exporting. They need Python 3 and ffmpeg (for the export only):
+```bash
+cd data-collector && pip install numpy
+python3 scripts/export_dataset.py                       # skip if dataset/ is already exported
+python3 scripts/qc_dataset.py --dataset dataset         # read reports/qc_report.md, then flagged.csv
+# list your test and dev speaker_ids in docs/SPLITS.md, then:
+python3 scripts/make_splits.py --dataset dataset --exclude reports/flagged.csv   # writes splits.json
+```
+If your exported folder is somewhere else, replace `dataset` with its path. For details, see [data-collector/README.md](data-collector/README.md#quality-check-and-traindevtest-splits).
+
 ## Note formatter (Task D3)
 
 [`formatter/`](formatter/) turns a short Banglish transcript into a clean note with rules only (no LLM): `akash er sathe meeting ache bikal 4 tay` → `Meeting with Akash - 4:00 PM`; `alu 50 tk, piyaj 40 tk` → one line per item plus a total. If no rule is confident it returns `matched: false` so the app can fall back to an LLM. Run `pip install -r formatter/requirements.txt`, then inside `formatter/`: `python3 -m pytest` and `python3 scripts/coverage_report.py`. How to add words or rules: [formatter/README.md](formatter/README.md).

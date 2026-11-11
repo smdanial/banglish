@@ -24,6 +24,10 @@ Sentences are shuffled per speaker but dealt round-robin across categories, so e
 | `scripts/build.mjs` | Build step (`npm run build`): writes `public/config.js` from env vars, copies prompts. Refuses admin keys. |
 | `scripts/export_dataset.py` | Downloads all audio → 16 kHz mono WAV + `manifest.csv`. Uses the admin key. |
 | `scripts/check_setup.py` | Verifies the Supabase security rules (public key = insert only). |
+| `scripts/qc_dataset.py` | Quality check of an exported dataset → `reports/qc_report.md` + `reports/flagged.csv`. |
+| `scripts/make_splits.py` | Train/dev/test split by speaker, from `docs/SPLITS.md` → `splits.json`. |
+| `docs/SPLITS.md` | Which speakers are in test and dev (you fill this in). |
+| `tests/` | Synthetic sample data generator, `sample_data/`, unit tests (`python3 -m unittest discover -s tests`). |
 | `docs/SUPABASE_SETUP.md` | Step-by-step Supabase setup for non-coders. |
 | `docs/DEPLOY.md` | Step-by-step deploy to Vercel or Cloudflare Pages. |
 | `.env.example` | All environment variables, with explanations. |
@@ -80,7 +84,18 @@ cd data-collector
 python3 scripts/export_dataset.py            # → dataset/wavs/*.wav + dataset/manifest.csv
 python3 scripts/export_dataset.py --out mydata --keep-original
 ```
-`manifest.csv` columns: `path, speaker_id, prompt_text, actual_text, category, duration` (duration in seconds, measured from the WAV). Re-running only downloads new recordings. Use `actual_text` as the transcript for training.
+`manifest.csv` columns: `path, speaker_id, prompt_text, actual_text, category, duration` (duration in seconds, measured from the WAV), then `prompt_id, phone_model, age_range, region, recording_id, created_at`. Re-running only downloads new recordings. Use `actual_text` as the transcript for training.
+
+## Quality check and train/dev/test splits
+Needs `pip install numpy`. Run from the `data-collector` folder on the exported dataset:
+```bash
+python3 scripts/qc_dataset.py --dataset dataset          # → reports/qc_report.md + reports/flagged.csv
+python3 scripts/make_splits.py --dataset dataset --config docs/SPLITS.md --exclude reports/flagged.csv   # → splits.json
+```
+- Read `reports/qc_report.md` first: the "Problems to fix" list at the top says what to do. `flagged.csv` opens in Excel or Google Sheets; `suggested_action` is **remove**, **fix text** or **listen**.
+- Before running `make_splits.py`, list your test and dev speaker_ids in `docs/SPLITS.md`. Every other speaker goes to train. A speaker listed in both test and dev stops the script. It warns when a category has fewer than 15 test clips. `--exclude` leaves out clips marked **remove**.
+- `reports/`, `splits.json` and all audio files are git-ignored, so they never get committed by accident.
+- To try the scripts without real data: `python3 tests/make_sample_data.py`, then add `--dataset tests/sample_data --config tests/sample_data/SPLITS.md` to the commands above.
 
 ## Privacy & security notes
 - No names, emails or IPs are stored by the app. `user_agent` is stored (browser/phone info) as requested.
