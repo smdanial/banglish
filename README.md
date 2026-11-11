@@ -15,3 +15,15 @@ Send the **production** https link (not a Vercel preview link). Ask people to op
 
 ### Exporting the data
 `python3 data-collector/scripts/export_dataset.py` (needs ffmpeg and the admin key in `data-collector/.env`) writes 16 kHz mono WAVs and `manifest.csv`. Details: [data-collector/README.md](data-collector/README.md#exporting-the-dataset).
+
+## Dataset quality check and splits (Task C3)
+
+Run these on your laptop after exporting. They need Python 3 and ffmpeg (for the export only):
+```bash
+cd data-collector && pip install numpy
+python3 scripts/export_dataset.py                       # skip if dataset/ is already exported
+python3 scripts/qc_dataset.py --dataset dataset         # read reports/qc_report.md, then flagged.csv
+# list your test and dev speaker_ids in docs/SPLITS.md, then:
+python3 scripts/make_splits.py --dataset dataset --exclude reports/flagged.csv   # writes splits.json
+```
+If your exported folder is somewhere else, replace `dataset` with its path. For details, see [data-collector/README.md](data-collector/README.md#quality-check-and-traindevtest-splits).

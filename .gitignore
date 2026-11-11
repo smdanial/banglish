@@ -2,3 +2,10 @@
 .env.*
 !.env.example
 node_modules/
+# audio is never committed
+*.wav
+*.webm
+*.m4a
+*.mp4
+*.ogg
+*.mp3
