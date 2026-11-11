@@ -45,8 +45,8 @@ ISSUES = {
     "unreadable": ("remove", "{n} clip(s) could not be opened as WAV files. Re-run the export, or remove them.", "not a readable WAV file"),
     "no_speech": ("remove", "{n} clip(s) contain no speech we could detect (silence, or the mic did not work). Remove them.", "no speech detected"),
     "empty_text": ("remove", "{n} clip(s) have an empty \"What you actually said\" box. Type what was said, or remove them.", "actual_text is empty"),
-    "duplicate_audio": ("remove", "{n} audio file(s) are exact copies of another file. Remove the copies (the first file of each group is not flagged).", "identical to another audio file"),
-    "duplicate_take": ("remove", "{n} extra recording(s) of a sentence the same speaker had already recorded. Keep one take per speaker and sentence; the flagged ones are the extras.", "same speaker recorded this prompt before"),
+    "duplicate_audio": ("remove", "{n} audio file(s) are exact copies of another file. Remove the copies (one file of each group is kept and not flagged).", "identical to another audio file"),
+    "duplicate_take": ("remove", "{n} extra recording(s) of a sentence the same speaker had already recorded. Keep one take per speaker and sentence; the flagged ones are the extras (a good take is kept in preference to a broken one).", "same speaker has another take of this prompt"),
     "bengali_script": ("fix text", "{n} clip(s) have Bengali letters in the text. The text must be Banglish in Latin letters: re-type it.", "Bengali script in actual_text"),
     "odd_characters": ("fix text", "{n} clip(s) have unusual characters in the text (emoji, symbols). Remove those characters.", "unusual characters in actual_text"),
     "too_short": ("listen", "{n} clip(s) are shorter than 1 second; the volunteer probably tapped Stop too early. Usually remove them.", "shorter than 1 s"),
@@ -84,6 +84,30 @@ def db(x):
     return 20 * np.log10(np.maximum(x, 1e-10))
 
 
+def pcm_to_float(raw, width):
+    """Decode little-endian PCM (8/16/24/32-bit) to floats in [-1, 1)."""
+    if width == 1:
+        return (np.frombuffer(raw, dtype=np.uint8).astype(np.float32) - 128.0) / 128.0
+    if width == 3:
+        b = np.frombuffer(raw[: len(raw) // 3 * 3], dtype=np.uint8).reshape(-1, 3).astype(np.int32)
+        v = b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16)
+        v = np.where(v >= 1 << 23, v - (1 << 24), v)
+        return v.astype(np.float32) / float(1 << 23)
+    return np.frombuffer(raw, dtype={2: "<i2", 4: "<i4"}[width]).astype(np.float32) / float(1 << (8 * width - 1))
+
+
+def csv_cell(value):
+    """Stop spreadsheets from running volunteer text as a formula."""
+    value = str(value)
+    return "'" + value if value[:1] in ("=", "+", "-", "@", "\t", "\r") else value
+
+
+def keeper(group):
+    """The clip to keep from a group of duplicates: the first one with nothing that means 'remove'."""
+    usable = [c for c in group if all(ISSUES[i][0] != "remove" for i in c["issues"])]
+    return (usable or group)[0]
+
+
 def analyse_audio(path):
     """Return (metrics dict, list of issue codes, details list, sha256 of the audio samples)."""
     issues, details = [], []
@@ -94,9 +118,9 @@ def analyse_audio(path):
     if (rate, ch, width) != (EXPECTED_RATE, EXPECTED_CHANNELS, 2):
         issues.append("wrong_format")
         details.append(f"{rate} Hz, {ch} channel(s), {8 * width}-bit")
-    if width != 2:
+    if width not in (1, 2, 3, 4):
         raise wave.Error(f"{8 * width}-bit audio is not supported")
-    x = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
+    x = pcm_to_float(raw, width)
     if ch > 1:
         x = x[: len(x) // ch * ch].reshape(-1, ch).mean(axis=1)
     dur = len(x) / float(rate)
@@ -195,7 +219,7 @@ def run(dataset, out_dir):
     if missing_cols:
         sys.exit(f"manifest.csv is missing columns: {', '.join(sorted(missing_cols))}")
 
-    clips, by_hash, seen_take = [], defaultdict(list), {}
+    clips, by_hash, takes = [], defaultdict(list), defaultdict(list)
     for i, r in enumerate(rows, 1):
         c = {"row": r, "issues": [], "details": [], "duration": None}
         wav = base / r["path"]
@@ -220,20 +244,24 @@ def run(dataset, out_dir):
         c["issues"] += iss
         c["details"] += det
         c["unchanged"] = norm_words(r["prompt_text"]) == norm_words(r["actual_text"])
-        key = (r["speaker_id"], r.get("prompt_id") or r["prompt_text"].strip().lower())
-        if key in seen_take:
-            c["issues"].append("duplicate_take")
-            c["details"].append("first take: " + seen_take[key])
-        else:
-            seen_take[key] = r["path"]
+        takes[(r["speaker_id"], r.get("prompt_id") or r["prompt_text"].strip().lower())].append(c)
         clips.append(c)
         if i % 200 == 0:
             print(f"  checked {i}/{len(rows)} clips")
 
+    # Pick keepers after the per-clip checks, so a good retake is kept instead of a broken first take.
     for group in by_hash.values():
-        for c in group[1:]:
-            c["issues"].append("duplicate_audio")
-            c["details"].append("same audio as " + group[0]["row"]["path"])
+        keep = keeper(group)
+        for c in group:
+            if c is not keep:
+                c["issues"].append("duplicate_audio")
+                c["details"].append("same audio as " + keep["row"]["path"])
+    for group in takes.values():
+        keep = keeper(group)
+        for c in group:
+            if c is not keep:
+                c["issues"].append("duplicate_take")
+                c["details"].append("kept take: " + keep["row"]["path"])
 
     flagged = [c for c in clips if c["issues"]]
     for c in flagged:
@@ -246,13 +274,13 @@ def run(dataset, out_dir):
         w.writeheader()
         for c in sorted(flagged, key=lambda c: (ACTION_ORDER[c["action"]], c["row"]["speaker_id"], c["row"]["path"])):
             r = c["row"]
-            w.writerow({
+            w.writerow({k: csv_cell(v) for k, v in {
                 "path": r["path"], "speaker_id": r["speaker_id"], "category": r.get("category", ""),
                 "duration": f"{c['duration']:.2f}", "suggested_action": c["action"],
                 "issues": "; ".join(c["issues"]),
                 "details": "; ".join([ISSUES[i][2] for i in c["issues"]] + c["details"]),
                 "prompt_text": r["prompt_text"], "actual_text": r["actual_text"],
-            })
+            }.items()})
 
     report = build_report(manifest_path, clips, flagged)
     (out_dir / "qc_report.md").write_text(report, encoding="utf-8")

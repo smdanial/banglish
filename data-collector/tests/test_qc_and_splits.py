@@ -5,7 +5,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import wave
 from pathlib import Path
+
+import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
 PLANTED = {"too_short", "too_long", "mostly_silence", "no_speech", "clipping", "low_volume",
@@ -95,6 +98,48 @@ class QcAndSplits(unittest.TestCase):
         kept = {p for v in json.loads(out.read_text())["clips"].values() for p in v}
         self.assertFalse(removed & kept)
         self.assertEqual(json.loads(out.read_text())["excluded_clips"], len(removed))
+
+
+def tone(path, freq, width=2, silent=False, sec=2.0, rate=16000):
+    t = np.arange(int(sec * rate)) / rate
+    x = np.zeros_like(t) if silent else 0.3 * np.sin(2 * np.pi * freq * t)
+    x[: int(0.3 * rate)] = 0
+    x[-int(0.3 * rate):] = 0
+    v = np.round(x * (2 ** (8 * width - 1) - 1)).astype("<i4")
+    raw = v.astype("<i2").tobytes() if width == 2 else b"".join(int(s).to_bytes(width, "little", signed=True) for s in v)
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(width)
+        w.setframerate(rate)
+        w.writeframes(raw)
+
+
+class QcEdgeCases(unittest.TestCase):
+    def test_retake_kept_24bit_not_removed_formula_escaped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            text = "ami aj bikal 4 tay bazar e jabo"
+            tone(d / "a.wav", 0, silent=True)        # broken first take
+            tone(d / "b.wav", 220)                   # good retake of the same prompt
+            tone(d / "c.wav", 330, width=3)          # playable, but 24-bit
+            tone(d / "d.wav", 440)
+            rows = [("a.wav", "spk_x", "p001", text), ("b.wav", "spk_x", "p001", text),
+                    ("c.wav", "spk_y", "p002", text), ("d.wav", "spk_y", "p003", '=HYPERLINK("http://x")')]
+            with open(d / "manifest.csv", "w", newline="", encoding="utf-8") as f:
+                w = csv.writer(f)
+                w.writerow(["path", "speaker_id", "prompt_id", "prompt_text", "actual_text", "category", "duration"])
+                for p, s, pid, actual in rows:
+                    w.writerow([p, s, pid, text, actual, "travel", "2.0"])
+            r = run("scripts/qc_dataset.py", "--dataset", d, "--out", d / "reports")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            with open(d / "reports" / "flagged.csv", newline="", encoding="utf-8-sig") as f:
+                flagged = {row["path"]: row for row in csv.DictReader(f)}
+        self.assertNotIn("b.wav", flagged)
+        self.assertIn("no_speech", flagged["a.wav"]["issues"])
+        self.assertIn("wrong_format", flagged["c.wav"]["issues"])
+        self.assertNotIn("unreadable", flagged["c.wav"]["issues"])
+        self.assertEqual(flagged["c.wav"]["suggested_action"], "listen")
+        self.assertTrue(flagged["d.wav"]["actual_text"].startswith("'="))
 
 
 if __name__ == "__main__":
