@@ -94,8 +94,11 @@ def main(argv=None):
     ap.add_argument("--models", help="comma-separated model names to run (default: all enabled in config)")
     ap.add_argument("--output", help="results folder (overrides config)")
     ap.add_argument("--limit", type=int, help="only the first N clips (quick try-out)")
+    ap.add_argument("--quick", action="store_true", help="quick check: only the first 30 clips (same as --limit 30)")
     ap.add_argument("--no-isolate", action="store_true", help="run models in this process (RAM numbers less exact)")
     args = ap.parse_args(argv)
+    if args.quick and not args.limit:
+        args.limit = 30
 
     load_dotenv()
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8")) or {}
@@ -128,7 +131,7 @@ def main(argv=None):
                       "used for training; give --splits for a fair test-set number)")
     if args.limit:
         clips = clips[: args.limit]
-        split_note += f"; limited to first {args.limit} clips (--limit)"
+        split_note += f"; limited to first {args.limit} clips ({'--quick' if args.quick else '--limit'})"
     if not clips:
         raise SystemExit("no clips to evaluate")
     print(f"{len(clips)} clips, {len({c.speaker_id for c in clips})} speakers. {split_note.replace('*', '')}")

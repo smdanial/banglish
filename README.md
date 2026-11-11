@@ -1,6 +1,8 @@
 # banglish
 Banglish voice input for keyboards. See [PLAN.md](PLAN.md) for the work plan and [HANDOVER.md](HANDOVER.md) for the latest status.
 
+**Running it on your laptop (Ubuntu, no GPU):** follow [RUN_ME.md](RUN_ME.md) step by step: setup, export, quality check, splits, formatter tests and the speech benchmark.
+
 ## Speech data collector (Task C1)
 
 [`data-collector/`](data-collector/) is a mobile web page that volunteers open on their phones to record Banglish sentences. It shows a consent notice (English + Bangla), then one prompt at a time with Record / Play / Re-record, a "What you actually said" box, Submit and Skip. Audio and metadata go to Supabase (free tier); the public key can only insert.
