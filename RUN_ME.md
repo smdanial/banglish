@@ -39,11 +39,11 @@ Expected output: `Already up to date.` or a list of changed files.
 ```bash
 cd ~/banglish && ./setup.sh
 ```
-Expected output (takes 2-10 minutes the first time and downloads about 600 MB):
+Expected output (takes 2-10 minutes the first time and downloads about 600 MB; your version numbers may differ):
 ```
 Creating .venv ...
 Installing Python packages (first time: 2-10 minutes, about 600 MB) ...
-Python 3.12.3, numpy 2.3.4, faster-whisper 1.2.1
+Python 3.12.3, numpy 2.5.4, faster-whisper 1.2.1
 Setup OK. Before running anything, type:  source .venv/bin/activate
 ```
 If it says `Missing system packages`, run step 1a again, then `./setup.sh` again.
