@@ -31,3 +31,7 @@ If your exported folder is somewhere else, replace `dataset` with its path. For 
 ## Note formatter (Task D3)
 
 [`formatter/`](formatter/) turns a short Banglish transcript into a clean note with rules only (no LLM): `akash er sathe meeting ache bikal 4 tay` → `Meeting with Akash - 4:00 PM`; `alu 50 tk, piyaj 40 tk` → one line per item plus a total. If no rule is confident it returns `matched: false` so the app can fall back to an LLM. Run `pip install -r formatter/requirements.txt`, then inside `formatter/`: `python3 -m pytest` and `python3 scripts/coverage_report.py`. How to add words or rules: [formatter/README.md](formatter/README.md).
+
+## Speech model evaluation (Task B2)
+
+[`eval/`](eval/) compares speech models (faster-whisper tiny…large-v3, Gemini, your own plug-ins) on the exported recordings: WER, CER, key-field (numbers/times) accuracy, speed and RAM. See [`eval/README.md`](eval/README.md) for how to run it on your laptop.

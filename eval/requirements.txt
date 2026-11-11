@@ -1,0 +1,7 @@
+faster-whisper>=1.1,<2
+jiwer>=3.0,<5
+PyYAML>=6.0
+openai>=1.40
+psutil>=5.9
+gTTS>=2.5        # only to create the synthetic sample in eval/sample
+pytest>=7        # only for eval/tests

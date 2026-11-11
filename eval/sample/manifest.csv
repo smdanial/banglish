@@ -1,0 +1,13 @@
+path,speaker_id,prompt_text,actual_text,category,duration
+wavs/s01.wav,spk_sample_1,"Kal bikal 4 tay office e meeting ache, bhule jeo na.","Kal bikal 4 tay office e meeting ache, bhule jeo na.",meetings_times,5.304
+wavs/s02.wav,spk_sample_1,Aj bazar e mot 850 taka khoroch holo.,Aj bazar e mot 850 taka khoroch holo.,expenses_taka,4.824
+wavs/s03.wav,spk_sample_1,"Amar number 01712 345678, save kore rakho.","Amar number 01712 345678, save kore rakho.",numbers_phone,8.808
+wavs/s04.wav,spk_sample_1,"Aj dupure bhat, dal ar ilish mach khabo.","Aj dupure bhat, dal ar ilish mach khabo.",food,4.944
+wavs/s05.wav,spk_sample_2,Bikal sharhe 5 tay Dhanmondi te dekha korbo.,Bikal sharhe 5 tay Dhanmondi te dekha korbo.,meetings_times,4.728
+wavs/s06.wav,spk_sample_2,"Rickshaw bhara 60 taka chailo, ami 50 taka dilam.","Rickshaw bhara 60 taka chailo, ami 50 taka dilam.",expenses_taka,5.616
+wavs/s07.wav,spk_sample_2,"Amar laptop ta hang kortese, restart dite hobe.","Amar laptop ta hang kortese, restart dite hobe.",code_mixed_english,5.184
+wavs/s08.wav,spk_sample_2,"Ammu, ami aj raate deri kore firbo.","Ammu, amii aj raate deri kore firbo.",family_chat,4.440
+wavs/s09.wav,spk_sample_3,Bus ta Sayedabad theke raat 10 tay charbe.,Bus ta Sayedabad theke raat 10 tay charbe.,travel,5.400
+wavs/s10.wav,spk_sample_3,Tumi amake 1500 taka bikash kore dite parba?,Tumi amake 1500 taka bikash kore dite parba?,expenses_taka,5.328
+wavs/s11.wav,spk_sample_3,Rahim bhai ke bolo kal office e aste.,Rahim bhai ke bolo kal office e aste.,people_names,5.112
+wavs/s12.wav,spk_sample_3,"Kal amar physics exam, ekhono onek pora baki.","Kal amar physics exam, ekhono onek pora baki.",study_exams,6.336

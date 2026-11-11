@@ -1,0 +1,4 @@
+{
+  "train": ["spk_sample_1"],
+  "test": ["spk_sample_2", "spk_sample_3"]
+}
