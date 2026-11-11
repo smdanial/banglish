@@ -156,7 +156,11 @@ split   clips  speakers  minutes
 train      20         2      1.5
 dev         0         0      0.0
 test       36         3      2.9
-(4 clips marked 'remove' in /home/YOU/banglish-data/reports/flagged.csv were left out)
+
+Excluded 4 clips marked 'remove' in /home/YOU/banglish-data/reports/flagged.csv; kept 56.
+speaker              split   kept  excluded
+spk_...              train     10         2
+...
 
 category             train clips/min     dev clips/min    test clips/min
 ...
@@ -166,6 +170,7 @@ Wrote /home/YOU/banglish-data/splits.json
 ```
 - `the dev split has no speakers` is fine for now (the benchmark only uses test).
 - `fewer than 15 clips in the test split` means those categories are measured on few clips: OK for a first look; add test speakers when you have more recordings.
+- `STOPPED: --exclude matched 0 clips` → the message says why: either flagged.csv has no clip marked `remove` (only **remove** clips are left out; **listen** and **fix text** clips stay in), or flagged.csv was made from a different export (run step 4 again on the same dataset folder).
 - `REFUSING TO RUN: ... listed in BOTH test and dev` → a speaker is in both lists; fix SPLITS.md and run again.
 - `the test split has no speakers` → none of the ids in SPLITS.md are in your export. Copy them from qc_report.md.
 
