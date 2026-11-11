@@ -11,11 +11,12 @@ All files are in `data-collector/`.
   - **Summaries:** per-speaker and per-category tables, and a plain-language "Problems to fix" list at the top. Each flagged clip gets a `suggested_action`: remove, fix text or listen.
 - `scripts/make_splits.py`: reads `docs/SPLITS.md` (or a `.yaml` file) and splits by speaker only. It refuses to run if a speaker is listed in both test and dev. It writes `splits.json` (speakers, clip paths, summary), prints clips, speakers and minutes per split and per category, and warns when a category has fewer than 15 test clips. `--exclude flagged.csv` leaves out clips marked "remove".
 - `export_dataset.py`: `manifest.csv` now has extra columns after the six required ones: `prompt_id, phone_model, age_range, region, recording_id, created_at`. The QC per-speaker table needs `phone_model`. Duplicate takes are matched on `prompt_id`. Manifests without these columns still work: the phone model shows as "-", and duplicates are matched on prompt text.
-- `tests/make_sample_data.py` creates a synthetic dataset (beeps, no real voices) in `tests/sample_data/`: 8 speakers, 91 clips, with 15 planted problems. `tests/test_qc_and_splits.py` has 6 unit tests. Audio, `reports/` and `splits.json` are git-ignored.
+- `tests/make_sample_data.py` creates a synthetic dataset (beeps, no real voices) in `tests/sample_data/`: 8 speakers, 91 clips, with 15 planted problems. `tests/test_qc_and_splits.py` has 7 unit tests. Audio, `reports/` and `splits.json` are git-ignored.
 
 ### Verified (by Devin, on the synthetic sample)
-- `python3 -m unittest discover -s tests` passes 6/6. QC finds all 15 planted problem types and flags no clean clips. A speaker listed in both test and dev stops `make_splits.py` with no output. Every speaker ends up in exactly one split. Clips marked "remove" are excluded. The fewer-than-15-test-clips warning fires.
+- `python3 -m unittest discover -s tests` passes 7/7. QC finds all 15 planted problem types and flags no clean clips. A speaker listed in both test and dev stops `make_splits.py` with no output. Every speaker ends up in exactly one split. Clips marked "remove" are excluded. The fewer-than-15-test-clips warning fires.
 - Both scripts run end to end on `tests/sample_data/`, producing `qc_report.md`, `flagged.csv` and `splits.json`.
+- `make_splits.py` also refuses to run if a speaker id in `SPLITS.md` is not under `## test` or `## dev` (tested), so a speaker meant for test can't end up in train by accident. The three `speaker_id=` lines added to `docs/SPLITS.md` on main are kept under "Not yet sorted" until you say which set they belong to.
 
 ### NOT verified
 - **Real recordings.** The thresholds were tuned on synthetic beeps, not real phone audio. Expect some false alarms, especially for `mostly_silence`, `cut_off` and `low_volume`. Read the first real report with that in mind and change the constants at the top of `qc_dataset.py` if needed.
@@ -24,6 +25,39 @@ All files are in `data-collector/`.
 - Opening `flagged.csv` in Excel: it is written as UTF-8 with a BOM so Excel should show Bengali text, but this was not checked in Excel itself.
 
 ---
+
+## Task D3: rule-based note formatter
+
+### What was built
+All D3 files live in [`formatter/`](formatter/) (see [formatter/README.md](formatter/README.md)).
+
+- `banglish_formatter/`: Python package, `format_note(text) -> {type, result, confidence, matched, notes}`. No LLM or network calls; only dependency is PyYAML.
+  - `rules/schedule.py`: "akash er sathe meeting ache bikal 4 tay" → `Meeting with Akash - 4:00 PM`.
+  - `rules/expenses.py`: one `item - amount` line per item, plus `total - N` (computed) for 2+ items.
+  - `numbers.py`: digits, Bangla digits, `1,200`, `2k`, `450/-`, Banglish/English number words, `dui hajar pach sho`, `pachsho`, `der sho`, `sharey/soa/paune`.
+  - Below confidence 0.6 → `type: "other"`, lightly cleaned input, `matched: false` (caller falls back to the LLM).
+- `data/numbers.yaml` (number words, multipliers, fraction words) and `data/lexicon.yaml` (currency, time-of-day, day, event, reminder, filler words). Nothing vocabulary-related is hard-coded.
+- `tests/`: `cases.yaml` (92 cases: 42 schedule, 34 expenses, 16 must-not-match), `test_cases.py`, `test_numbers.py`, `test_api.py`.
+- `scripts/coverage_report.py`: pass rate per type (`--show-failures` for details).
+
+#### Decisions made (change if you disagree)
+- **rat 12 = 12:00 AM, rat 1-4 = AM** (late night), other rat hours = PM. The spec said "rat = PM"; "rat 2 tay" meaning 2 PM seemed wrong. A note is added when this happens.
+- **No AM/PM word** → guess (7-11 = AM, 12-6 = PM), confidence 0.75 instead of 0.9, and a note "AM/PM not said; guessed PM".
+- **Day words are kept as spoken** before the time: `Meeting - kal 3:00 PM` (not translated to "tomorrow").
+- `<name> er sathe <event>` becomes `<Event> with <Name>`; two names become `Akash and Rahim`.
+- A missing amount shows as `piyaj - ?` and is left out of the total (with a note).
+- Mixed time + money sentences ("bikal 4 tay rahim ke 500 taka dite hobe"), a single amount with no item or no money word ("alu 50"), and "3 ta class" (count, not a time) return `matched: false` on purpose.
+
+### Verified (by Devin, in the dev VM, Python 3.10)
+- `cd formatter && python3 -m pytest` → 125 passed (92 cases + number/API unit tests).
+- `python3 scripts/coverage_report.py` → 100% for schedule, expenses and other on `tests/cases.yaml`.
+- The vocabulary loader refuses unquoted yes/no-style words with a clear error (tested).
+
+### NOT verified
+- **The 100% is on cases Devin wrote while building the rules**, so it overstates real accuracy. Needs a held-out set of real transcripts (from C1 recordings / ASR output) to measure honestly. In a quick spot check of ~20 fresh sentences, two needed fixes (per-kg price "65 taka kg", English "five hundred"); both are fixed and added as cases.
+- Number word spellings for 21-99 were written by Devin from memory; a native speaker should skim `data/numbers.yaml`.
+- Real ASR output (punctuation, casing, odd spellings) has not been tried. Not wired into any backend yet (that is D4).
+- Known gaps: names glued to "r" (`rinar sathe` → `Rinar`), relative times ("15 minute por"), dates other than `N tarikh`, items joined by "ar" with only one price ("alu ar piyaj 90 tk" → `alu - ?`), "bikal 4 tay ashbo" style sentences with no event word still match (confidence 0.65).
 
 ## Task C1: Banglish speech collection page
 

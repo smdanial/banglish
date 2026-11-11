@@ -27,3 +27,7 @@ python3 scripts/qc_dataset.py --dataset dataset         # read reports/qc_report
 python3 scripts/make_splits.py --dataset dataset --exclude reports/flagged.csv   # writes splits.json
 ```
 If your exported folder is somewhere else, replace `dataset` with its path. For details, see [data-collector/README.md](data-collector/README.md#quality-check-and-traindevtest-splits).
+
+## Note formatter (Task D3)
+
+[`formatter/`](formatter/) turns a short Banglish transcript into a clean note with rules only (no LLM): `akash er sathe meeting ache bikal 4 tay` → `Meeting with Akash - 4:00 PM`; `alu 50 tk, piyaj 40 tk` → one line per item plus a total. If no rule is confident it returns `matched: false` so the app can fall back to an LLM. Run `pip install -r formatter/requirements.txt`, then inside `formatter/`: `python3 -m pytest` and `python3 scripts/coverage_report.py`. How to add words or rules: [formatter/README.md](formatter/README.md).

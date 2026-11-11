@@ -9,3 +9,6 @@ node_modules/
 *.mp4
 *.ogg
 *.mp3
+__pycache__/
+.pytest_cache/
+*.egg-info/
