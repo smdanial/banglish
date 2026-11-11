@@ -7,11 +7,13 @@ Usage (from the data-collector folder):
 
 The config (docs/SPLITS.md, or a .yaml file) lists speaker_ids under "test" and "dev";
 every other speaker goes to "train". The script refuses to run if a speaker is listed in both.
---exclude drops clips that qc_dataset.py marked "remove" in flagged.csv.
+--exclude drops clips that qc_dataset.py marked "remove" in flagged.csv ("listen" and "fix text" clips are
+kept), prints kept/excluded clips per speaker, and stops if it matches no clip in the manifest.
 Writes splits.json and prints clips, speakers and minutes per split and category.
 """
 import argparse
 import csv
+import io
 import json
 import re
 import sys
@@ -20,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SPLITS = ("train", "dev", "test")
+EXCLUDE_ACTION = "remove"
 MIN_TEST_CLIPS_PER_CATEGORY = 15
 SPEAKER_LINE = re.compile(r"^(?:[-*]\s*(?:speaker_id\s*[=:]\s*)?|speaker_id\s*[=:]\s*|(?=spk_))[`'\"]?([A-Za-z0-9_\-]+)")
 
@@ -65,6 +68,90 @@ def parse_config(path):
     return out
 
 
+def norm_header(name):
+    return re.sub(r"[\s\-]+", "_", (name or "").replace("\ufeff", "").strip().lower())
+
+
+def clip_key(path):
+    """Compare paths the same way whatever saved the file: no quotes, no Excel "'" prefix, / not \\, no ./"""
+    p = (path or "").strip().strip('"').lstrip("'").strip().replace("\\", "/")
+    while p.startswith("./"):
+        p = p[2:]
+    return p
+
+
+def read_flagged(path):
+    """Rows of flagged.csv as dicts with normalised column names. Also reads a copy re-saved by
+    Excel / LibreOffice (semicolon or tab separators, BOM or not, different header case)."""
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        text = f.read()
+    first = text.splitlines()[0] if text.strip() else ""
+    delim = max(",;\t", key=first.count)
+    rows = list(csv.reader(io.StringIO(text), delimiter=delim))
+    if not rows:
+        sys.exit(f"--exclude: {path} is empty. Use the flagged.csv written by qc_dataset.py.")
+    header = [norm_header(h) for h in rows[0]]
+    cols = {"path": next((h for h in header if h in ("path", "file", "filename", "file_name")), None),
+            "action": next((h for h in header if h in ("suggested_action", "action")), None)}
+    if not cols["path"] or not cols["action"]:
+        sys.exit(f"--exclude: {path} does not look like flagged.csv from qc_dataset.py.\n"
+                 f"  Needed columns: path, suggested_action\n  Found columns:  {', '.join(rows[0]) or '(none)'}")
+    out = []
+    for r in rows[1:]:
+        if not any(c.strip() for c in r):
+            continue
+        d = dict(zip(header, r))
+        out.append({"path": d.get(cols["path"], ""), "action": (d.get(cols["action"]) or "").strip().lower(),
+                    "recording_id": (d.get("recording_id") or "").strip()})
+    return out
+
+
+def match_exclusions(flag_path, rows):
+    """Return the set of manifest row numbers that flagged.csv marks 'remove'. Stops with an error if none match."""
+    flagged = read_flagged(flag_path)
+    index, names = {}, defaultdict(list)
+    for i, r in enumerate(rows):
+        key = clip_key(r["path"])
+        index[key] = i
+        names[key.rsplit("/", 1)[-1]].append(i)
+        if (r.get("recording_id") or "").strip():
+            index["id:" + r["recording_id"].strip()] = i
+    to_remove = [f for f in flagged if f["action"] == EXCLUDE_ACTION]
+    matched, unmatched = set(), []
+    for f in to_remove:
+        key = clip_key(f["path"])
+        same_name = names.get(key.rsplit("/", 1)[-1], [])
+        i = index.get(key, index.get("id:" + f["recording_id"]) if f["recording_id"] else None)
+        if i is None and len(same_name) == 1:  # absolute path or another folder prefix: match on the file name
+            i = same_name[0]
+        if i is None:
+            unmatched.append(f["path"])
+        else:
+            matched.add(i)
+
+    if not to_remove:
+        counts = defaultdict(int)
+        for f in flagged:
+            counts[f["action"] or "(empty)"] += 1
+        found = ", ".join(f"{n} '{a}'" for a, n in sorted(counts.items())) or "no rows at all"
+        sys.exit(f"STOPPED: --exclude matched 0 clips. {flag_path} has no rows with suggested_action "
+                 f"'{EXCLUDE_ACTION}' (it has {found}).\n"
+                 f"Only '{EXCLUDE_ACTION}' clips are left out; 'listen' and 'fix text' clips are kept on purpose.\n"
+                 f"If you listened and want a clip gone, change its suggested_action to {EXCLUDE_ACTION} and save.\n"
+                 "If nothing needs removing, run again without --exclude.")
+    if not matched:
+        sys.exit(f"STOPPED: --exclude matched 0 clips. None of the {len(to_remove)} '{EXCLUDE_ACTION}' clips in "
+                 f"{flag_path} is in the manifest.\n"
+                 f"  flagged.csv paths:  {', '.join(p for p in unmatched[:3])}\n"
+                 f"  manifest.csv paths: {', '.join(r['path'] for r in rows[:3])}\n"
+                 "flagged.csv was probably made from a different export. Run qc_dataset.py again with the same "
+                 "--dataset folder, then run this again.")
+    if unmatched:
+        print(f"WARNING: {len(unmatched)} of the {len(to_remove)} '{EXCLUDE_ACTION}' clips in {flag_path} are not in "
+              f"the manifest and were ignored, e.g. {', '.join(unmatched[:3])}")
+    return matched
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dataset", default="dataset", help="folder with manifest.csv (default: dataset)")
@@ -101,20 +188,18 @@ def main():
         if not any(assign.get(s) == name for s in known):
             print(f"WARNING: the {name} split has no speakers.")
 
-    excluded = set()
-    if args.exclude:
-        with open(args.exclude, newline="", encoding="utf-8-sig") as f:
-            excluded = {r["path"] for r in csv.DictReader(f) if r.get("suggested_action") == "remove"}
+    excluded = match_exclusions(args.exclude, rows) if args.exclude else set()
 
     clips = {s: [] for s in SPLITS}
     spk = {s: set() for s in SPLITS}
     sec = defaultdict(float)
     cat_n, cat_sec = defaultdict(int), defaultdict(float)
-    dropped = 0
-    for r in rows:
-        if r["path"] in excluded:
-            dropped += 1
+    kept_by_spk, excl_by_spk = defaultdict(int), defaultdict(int)
+    for i, r in enumerate(rows):
+        if i in excluded:
+            excl_by_spk[r["speaker_id"]] += 1
             continue
+        kept_by_spk[r["speaker_id"]] += 1
         split = assign.get(r["speaker_id"], "train")
         d = float(r.get("duration") or 0)
         c = r.get("category") or "(none)"
@@ -136,7 +221,8 @@ def main():
     result = {
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "manifest": str(manifest), "config": str(args.config),
-        "excluded_clips": dropped,
+        "excluded_clips": len(excluded),
+        "excluded": sorted(rows[i]["path"] for i in excluded),
         "speakers": {s: sorted(spk[s]) for s in SPLITS},
         "summary": summary,
         "clips": clips,
@@ -146,8 +232,12 @@ def main():
     print(f"\n{'split':<6} {'clips':>6} {'speakers':>9} {'minutes':>8}")
     for s in SPLITS:
         print(f"{s:<6} {len(clips[s]):>6} {len(spk[s]):>9} {sec[s] / 60:>8.1f}")
-    if dropped:
-        print(f"({dropped} clips marked 'remove' in {args.exclude} were left out)")
+    if args.exclude:
+        print(f"\nExcluded {len(excluded)} clips marked '{EXCLUDE_ACTION}' in {args.exclude}; kept {len(rows) - len(excluded)}.")
+        sw = max(len("speaker"), *(len(s) for s in known))
+        print(f"{'speaker':<{sw}}  {'split':<5}  {'kept':>5}  {'excluded':>8}")
+        for s in sorted(known, key=lambda s: (SPLITS.index(assign.get(s, "train")), s)):
+            print(f"{s:<{sw}}  {assign.get(s, 'train'):<5}  {kept_by_spk[s]:>5}  {excl_by_spk[s]:>8}")
     w = max(len(c) for c in cats)
     print(f"\n{'category':<{w}}  " + "  ".join(f"{s + ' clips/min':>16}" for s in SPLITS))
     for c in cats:

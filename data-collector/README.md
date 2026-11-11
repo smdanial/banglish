@@ -93,7 +93,7 @@ python3 scripts/qc_dataset.py --dataset dataset          # → reports/qc_report
 python3 scripts/make_splits.py --dataset dataset --config docs/SPLITS.md --exclude reports/flagged.csv   # → splits.json
 ```
 - Read `reports/qc_report.md` first: the "Problems to fix" list at the top says what to do. `flagged.csv` opens in Excel or Google Sheets; `suggested_action` is **remove**, **fix text** or **listen**.
-- Before running `make_splits.py`, list your test and dev speaker_ids in `docs/SPLITS.md`. Every other speaker goes to train. A speaker listed in both test and dev stops the script. It warns when a category has fewer than 15 test clips. `--exclude` leaves out clips marked **remove**.
+- Before running `make_splits.py`, list your test and dev speaker_ids in `docs/SPLITS.md`. Every other speaker goes to train. A speaker listed in both test and dev stops the script. It warns when a category has fewer than 15 test clips. `--exclude` leaves out clips marked **remove** (not **listen** or **fix text**), prints kept/excluded clips per speaker, and stops with an error if it matches no clip.
 - `reports/`, `splits.json` and all audio files are git-ignored, so they never get committed by accident.
 - To try the scripts without real data: `python3 tests/make_sample_data.py`, then add `--dataset tests/sample_data --config tests/sample_data/SPLITS.md` to the commands above.
 

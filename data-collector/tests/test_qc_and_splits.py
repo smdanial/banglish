@@ -142,5 +142,108 @@ class QcEdgeCases(unittest.TestCase):
         self.assertTrue(flagged["d.wav"]["actual_text"].startswith("'="))
 
 
+class ExcludeMatchesRealFormat(unittest.TestCase):
+    """manifest.csv in export_dataset.py's format, flagged.csv written by qc_dataset.py itself."""
+
+    def setUp(self):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from export_dataset import MANIFEST_FIELDS
+        self.tmp = tempfile.TemporaryDirectory()
+        d = self.d = Path(self.tmp.name)
+        (d / "data" / "wavs").mkdir(parents=True)
+        cfg = d / "SPLITS.md"
+        cfg.write_text("## test\n- spk_t\n\n## dev\n", encoding="utf-8")
+        self.cfg = cfg
+        # (speaker, kind): good, silent (remove: no_speech), empty text (remove), 24-bit (listen: wrong_format)
+        clips = [("spk_a", "good"), ("spk_a", "silent"), ("spk_a", "good"), ("spk_b", "good"),
+                 ("spk_b", "empty"), ("spk_b", "24bit"), ("spk_t", "good"), ("spk_t", "silent")]
+        rows = []
+        for n, (spk, kind) in enumerate(clips):
+            rid = f"00000000-0000-4000-8000-{n:012d}"
+            tone(d / "data" / "wavs" / f"{rid}.wav", 200 + 30 * n, width=3 if kind == "24bit" else 2,
+                 silent=kind == "silent")
+            text = f"ami {n} number bakko bolchi"
+            rows.append({"path": f"wavs/{rid}.wav", "speaker_id": spk, "prompt_text": text,
+                         "actual_text": "" if kind == "empty" else text, "category": "travel", "duration": "2.000",
+                         "prompt_id": f"p{n:03d}", "phone_model": "", "age_range": "", "region": "",
+                         "recording_id": rid, "created_at": f"2026-11-01T10:00:0{n}+00:00"})
+        with open(d / "data" / "manifest.csv", "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=MANIFEST_FIELDS)
+            w.writeheader()
+            w.writerows(rows)
+        r = run("scripts/qc_dataset.py", "--dataset", d / "data", "--out", d / "reports")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.flagged = d / "reports" / "flagged.csv"
+        self.remove = {rows[i]["path"] for i in (1, 4, 7)}
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def splits(self, flagged):
+        out = self.d / "splits.json"
+        r = run("scripts/make_splits.py", "--dataset", self.d / "data", "--config", self.cfg, "--out", out,
+                "--exclude", flagged)
+        return r, (json.loads(out.read_text()) if out.exists() else None)
+
+    def test_flagged_csv_from_qc_excludes_remove_clips_and_prints_per_speaker(self):
+        with open(self.flagged, newline="", encoding="utf-8-sig") as f:
+            actions = {row["path"]: row["suggested_action"] for row in csv.DictReader(f)}
+        self.assertEqual({p for p, a in actions.items() if a == "remove"}, self.remove)
+        self.assertIn("listen", actions.values())
+        r, res = self.splits(self.flagged)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(res["excluded_clips"], 3)
+        self.assertEqual(set(res["excluded"]), self.remove)
+        kept = [p for v in res["clips"].values() for p in v]
+        self.assertEqual(len(kept), 5)
+        self.assertFalse(self.remove & set(kept))
+        self.assertIn("Excluded 3 clips", r.stdout)
+        self.assertIn("kept 5", r.stdout)
+        self.assertRegex(r.stdout, r"spk_a\s+train\s+2\s+1")
+        self.assertRegex(r.stdout, r"spk_b\s+train\s+2\s+1")
+        self.assertRegex(r.stdout, r"spk_t\s+test\s+1\s+1")
+
+    def test_resaved_by_spreadsheet_still_matches(self):
+        with open(self.flagged, newline="", encoding="utf-8-sig") as f:
+            rows = list(csv.reader(f))
+        resaved = self.d / "resaved.csv"
+        with open(resaved, "w", newline="", encoding="utf-8") as f:  # no BOM, ';', all quoted, edited by hand
+            w = csv.writer(f, delimiter=";", quoting=csv.QUOTE_ALL)
+            w.writerow([h.replace("_", " ").title() for h in rows[0]])
+            for row in rows[1:]:
+                row[0] = ".\\" + row[0].replace("/", "\\")
+                row[4] = row[4].capitalize() + " "
+                w.writerow(row)
+        r, res = self.splits(resaved)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(set(res["excluded"]), self.remove)
+
+    def test_flagged_from_another_export_stops(self):
+        text = self.flagged.read_text(encoding="utf-8-sig").replace("00000000-0000-4000", "11111111-1111-4111")
+        other = self.d / "other.csv"
+        other.write_text(text, encoding="utf-8-sig")
+        r, res = self.splits(other)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("matched 0 clips", r.stderr)
+        self.assertIn("wavs/11111111-1111-4111", r.stderr)
+        self.assertIsNone(res)
+
+    def test_no_remove_rows_stops(self):
+        text = self.flagged.read_text(encoding="utf-8-sig").replace(",remove,", ",listen,")
+        only_listen = self.d / "listen.csv"
+        only_listen.write_text(text, encoding="utf-8-sig")
+        r, res = self.splits(only_listen)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("matched 0 clips", r.stderr)
+        self.assertIn("4 'listen'", r.stderr)
+        self.assertIsNone(res)
+
+    def test_wrong_file_stops_with_columns(self):
+        r, res = self.splits(self.d / "data" / "manifest.csv")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("suggested_action", r.stderr)
+        self.assertIsNone(res)
+
+
 if __name__ == "__main__":
     unittest.main()
