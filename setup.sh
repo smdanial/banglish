@@ -26,7 +26,7 @@ if [ ! -x .venv/bin/python ]; then
   echo "Creating .venv ..."
   python3 -m venv .venv
 fi
-echo "Installing Python packages (first time: a few minutes, about 300 MB) ..."
+echo "Installing Python packages (first time: 2-10 minutes, about 600 MB) ..."
 .venv/bin/python -m pip install --quiet --upgrade pip
 .venv/bin/python -m pip install --quiet -r requirements.txt
 

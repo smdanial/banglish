@@ -131,7 +131,7 @@ def main(argv=None):
                       "used for training; give --splits for a fair test-set number)")
     if args.limit:
         clips = clips[: args.limit]
-        split_note += f"; limited to first {args.limit} clips (--limit)"
+        split_note += f"; limited to first {args.limit} clips ({'--quick' if args.quick else '--limit'})"
     if not clips:
         raise SystemExit("no clips to evaluate")
     print(f"{len(clips)} clips, {len({c.speaker_id for c in clips})} speakers. {split_note.replace('*', '')}")
