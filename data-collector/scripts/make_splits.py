@@ -21,17 +21,19 @@ from pathlib import Path
 
 SPLITS = ("train", "dev", "test")
 MIN_TEST_CLIPS_PER_CATEGORY = 15
-ID = re.compile(r"[A-Za-z0-9_\-]+")
+SPEAKER_LINE = re.compile(r"^(?:[-*]\s*(?:speaker_id\s*[=:]\s*)?|speaker_id\s*[=:]\s*|(?=spk_))[`'\"]?([A-Za-z0-9_\-]+)")
 
 
 def parse_config(path):
     """Return {"test": [...], "dev": [...]} from a SPLITS.md or a simple YAML file.
 
-    Markdown: a heading whose first word is "test" or "dev", then bullet lines ("- spk_abc  (any note)").
+    Markdown: a heading whose first word is "test" or "dev", then one speaker per line:
+              "- spk_abc  (any note)" or "speaker_id=spk_abc".
     YAML:     test: [spk_a, spk_b]   or   test:\\n  - spk_a
+    Speaker ids (spk_...) written outside a test/dev section are returned under "unsorted".
     """
     text = Path(path).read_text(encoding="utf-8")
-    out = {"test": [], "dev": []}
+    out = {"test": [], "dev": [], "unsorted": []}
     current = None
     yaml_mode = Path(path).suffix.lower() in (".yaml", ".yml")
     for raw in text.splitlines():
@@ -43,7 +45,7 @@ def parse_config(path):
             m = re.match(r"^(\w+)\s*:\s*(.*)$", line)
             if m and not line.startswith((" ", "\t", "-")):
                 key = m.group(1).lower()
-                current = key if key in out else None
+                current = key if key in ("test", "dev") else None
                 rest = m.group(2).strip()
                 if current and rest.startswith("["):
                     out[current] += [t.strip(" '\"") for t in rest.strip("[]").split(",") if t.strip(" '\"")]
@@ -51,13 +53,15 @@ def parse_config(path):
         else:
             if stripped.startswith("#"):
                 first = (re.findall(r"[a-z]+", stripped.lower()) or [""])[0]
-                current = first if first in out else None
+                current = first if first in ("test", "dev") else None
                 continue
-        if current and stripped.startswith(("-", "*")):
-            item = stripped[1:].strip().strip("`'\"")
-            m = ID.match(item.strip("`"))
-            if m:
-                out[current].append(m.group(0))
+        sid = SPEAKER_LINE.match(stripped)
+        if not sid:
+            continue
+        if current:
+            out[current].append(sid.group(1))
+        elif sid.group(1).startswith("spk_"):
+            out["unsorted"].append(sid.group(1))
     return out
 
 
@@ -79,6 +83,10 @@ def main():
         rows = list(csv.DictReader(f))
 
     cfg = parse_config(args.config)
+    if cfg["unsorted"]:
+        sys.exit("REFUSING TO RUN: these speakers are in " + args.config + " but not under a '## test' or '## dev'"
+                 " heading: " + ", ".join(cfg["unsorted"]) + "\nMove each one under '## test' or '## dev'"
+                 " (or delete the line to keep them in train) and run again.")
     both = sorted(set(cfg["test"]) & set(cfg["dev"]))
     if both:
         sys.exit("REFUSING TO RUN: these speakers are listed in BOTH test and dev: " + ", ".join(both)

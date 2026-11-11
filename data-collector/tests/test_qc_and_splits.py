@@ -54,8 +54,8 @@ class QcAndSplits(unittest.TestCase):
         return p
 
     def test_splits_by_speaker(self):
-        cfg = self.write("s.md", "# x\n- spk_sample05\n## test\n- spk_sample01 note\n- `spk_sample02`\n"
-                                 "## dev\n- spk_sample04\n## notes\n- spk_sample06\n")
+        cfg = self.write("s.md", "# Splits\nSome notes.\n## test\n- spk_sample01 note\nspeaker_id=spk_sample02\n"
+                                 "## dev\n- `spk_sample04`\n")
         out = Path(self.tmp.name) / "splits.json"
         r = run("scripts/make_splits.py", "--dataset", self.data, "--config", cfg, "--out", out)
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -63,7 +63,6 @@ class QcAndSplits(unittest.TestCase):
         self.assertEqual(d["speakers"]["test"], ["spk_sample01", "spk_sample02"])
         self.assertEqual(d["speakers"]["dev"], ["spk_sample04"])
         self.assertIn("spk_sample05", d["speakers"]["train"])
-        self.assertIn("spk_sample06", d["speakers"]["train"])
         sets = [set(v) for v in d["speakers"].values()]
         self.assertFalse(sets[0] & sets[1] or sets[0] & sets[2] or sets[1] & sets[2])
         with open(self.data / "manifest.csv", newline="", encoding="utf-8") as f:
@@ -76,6 +75,14 @@ class QcAndSplits(unittest.TestCase):
         r = run("scripts/make_splits.py", "--dataset", self.data, "--config", cfg, "--out", out)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("spk_sample02", r.stderr)
+        self.assertFalse(out.exists())
+
+    def test_refuses_speaker_outside_test_and_dev(self):
+        cfg = self.write("loose.md", "# Splits\nspeaker_id=spk_sample05\n## test\n- spk_sample01\n")
+        out = Path(self.tmp.name) / "loose.json"
+        r = run("scripts/make_splits.py", "--dataset", self.data, "--config", cfg, "--out", out)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("spk_sample05", r.stderr)
         self.assertFalse(out.exists())
 
     def test_exclude_drops_remove_clips(self):
