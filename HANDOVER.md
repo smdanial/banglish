@@ -16,7 +16,7 @@ All files are in `data-collector/`.
 ### Verified (by Devin, on the synthetic sample)
 - `python3 -m unittest discover -s tests` passes 7/7. QC finds all 15 planted problem types and flags no clean clips. A speaker listed in both test and dev stops `make_splits.py` with no output. Every speaker ends up in exactly one split. Clips marked "remove" are excluded. The fewer-than-15-test-clips warning fires.
 - Both scripts run end to end on `tests/sample_data/`, producing `qc_report.md`, `flagged.csv` and `splits.json`.
-- `make_splits.py` also refuses to run if a speaker id in `SPLITS.md` is not under `## test` or `## dev` (tested), so a speaker meant for test can't end up in train by accident. The three `speaker_id=` lines added to `docs/SPLITS.md` on main are kept under "Not yet sorted" until you say which set they belong to.
+- `make_splits.py` also refuses to run if a speaker id in `SPLITS.md` is not under `## test` or `## dev` (tested), so a speaker meant for test can't end up in train by accident. The three speakers you added to `docs/SPLITS.md` are now listed under test; dev is still empty.
 
 ### NOT verified
 - **Real recordings.** The thresholds were tuned on synthetic beeps, not real phone audio. Expect some false alarms, especially for `mostly_silence`, `cut_off` and `low_volume`. Read the first real report with that in mind and change the constants at the top of `qc_dataset.py` if needed.
