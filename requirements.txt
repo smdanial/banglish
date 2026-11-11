@@ -1,0 +1,7 @@
+# One Python environment for everything that runs on a laptop (CPU only, no GPU):
+# export_dataset.py (standard library + ffmpeg), qc_dataset.py / make_splits.py (numpy),
+# the speech benchmark (eval/) and the formatter tests (formatter/).
+# Install with ./setup.sh, or: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+-r eval/requirements.txt
+-r formatter/requirements.txt
+numpy>=1.21

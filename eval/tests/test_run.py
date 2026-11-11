@@ -59,3 +59,25 @@ def test_end_to_end_and_resume(tmp_path, monkeypatch):
     summary = (out / "summary.md").read_text(encoding="utf-8")
     assert "Split: **test**" in summary and "2 clips from 1 speakers" in summary
     assert len(calls.read_text().splitlines()) == 3
+
+
+def test_quick_limits_to_30_clips(tmp_path):
+    data = tmp_path / "data"
+    (data / "wavs").mkdir(parents=True)
+    plugin = tmp_path / "echo.py"
+    plugin.write_text("def transcribe(path):\n    return 'ami jabo'\n")
+    with open(data / "manifest.csv", "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["path", "speaker_id", "prompt_text", "actual_text", "category", "duration"])
+        for i in range(40):
+            with wave.open(str(data / "wavs" / f"{i}.wav"), "wb") as wf:
+                wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(16000); wf.writeframes(b"\0\0" * 8000)
+            w.writerow([f"wavs/{i}.wav", f"s{i % 4}", "ami jabo", "ami jabo", "food", "0.5"])
+    out = tmp_path / "results"
+    cfg = {"data": {"dir": str(data)}, "output_dir": str(out), "isolate_models": False,
+           "models": [{"name": "echo", "type": "plugin", "file": str(plugin)}]}
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(yaml.safe_dump(cfg))
+    assert run.main(["--config", str(cfg_file), "--quick"]) == 0
+    summary = (out / "summary.md").read_text(encoding="utf-8")
+    assert "limited to first 30 clips" in summary and "30 clips from 4 speakers" in summary

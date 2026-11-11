@@ -20,3 +20,13 @@ __pycache__/
 .pytest_cache/
 *.mp4
 *.egg-info/
+
+# local Python environment (./setup.sh)
+.venv/
+venv/
+# exported data, QC reports, splits and benchmark results: keep them OUTSIDE the repo
+# (RUN_ME.md uses ~/banglish-data); these lines catch them if they land here by mistake
+dataset/
+banglish-data/
+reports/
+results/
