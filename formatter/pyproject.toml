@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "banglish-formatter"
+version = "0.1.0"
+description = "Rule-based Banglish transcript -> note formatter (no LLM)"
+requires-python = ">=3.9"
+dependencies = ["PyYAML>=6"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.setuptools]
+packages = ["banglish_formatter", "banglish_formatter.rules"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
