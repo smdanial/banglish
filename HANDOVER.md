@@ -1,4 +1,40 @@
-# Handover – Task C1: Banglish speech collection page
+# Handover – Task B2: speech model evaluation harness
+
+## What was built
+Everything lives in [`eval/`](eval/); how to run it on real data is in [`eval/README.md`](eval/README.md) (7 steps).
+
+- `python -m eval.run --config eval/config.yaml [--data DIR] [--splits splits.json] [--split test] [--models a,b] [--output DIR] [--limit N]`.
+- Input: export folder with `manifest.csv` (`path, speaker_id, prompt_text, actual_text, category, duration`) + 16 kHz mono WAVs. With `--splits`, only the chosen split (default `test`) is evaluated; without it every clip is evaluated and `summary.md` says so in bold.
+- Models (`eval/config.yaml`): faster-whisper tiny/base/small/medium (CPU, int8, `language: bn`), large-v3 (in config, `enabled: false`), Gemini via the OpenAI-compatible endpoint (`GEMINI_API_KEY`/`GOOGLE_API_KEY`, model from `GEMINI_MODEL`, default `gemini-2.5-flash`), and a plug-in interface (`eval/plugins/example_plugin.py`: one function `transcribe(path) -> text`).
+- Romanizer: Whisper output in a non-Latin script is converted to Banglish before scoring. Default = LLM (Gemini) with an on-disk cache (`eval/cache/`); falls back to a rule-based transliterator when no key is set. Such models are labelled e.g. `whisper-small + romanizer (llm:gemini-2.5-flash)` / `+ romanizer (rules)`; raw model output and romanized text are both kept in `results/<model>/hypotheses.csv`.
+- Normalization (both sides): lowercase, strip punctuation, collapse spaces, spelling-variant map in `eval/normalization.yaml` (extend it freely). Number/time words (`char tay`, `sharhe 5`, `18 hajar`, Bengali digits, phone numbers) are turned into digits for key-field matching.
+- Metrics per model, overall and per category: WER, CER (jiwer), key-field accuracy (% of utterances whose reference contains numbers/times where ALL of them match exactly), seconds per audio second, peak RAM (each model runs in its own process). Output: `results/summary.md`, `results/<model>/worst.csv` (20 worst), `hypotheses.csv`, resumable `transcripts.jsonl`.
+- Synthetic sample: `eval/sample/` (12 clips, 3 fake speakers, 9 categories, with `splits.json`). Only the texts and generator are committed; the WAVs are generated on first run (Google TTS Bengali voice, offline fallbacks espeak-ng → tones) and gitignored.
+- Privacy: `*.wav` and other audio, `eval/results/`, `eval/cache/`, `.env` are gitignored. API keys are never printed.
+
+### Deviations / decisions
+- Results go to `eval/results/` (not repo-root `results/`), next to the harness, and are gitignored because on real data they contain private transcripts.
+- `make_splits.py` does not exist yet, so `splits.json` is read in several shapes: `{"test": [clip paths or speaker_ids]}`, `{"splits": {...}}`, `{"test": {"speakers": [...]}}`, or `{"<clip path>": "test"}`. **Check this when make_splits.py is written.**
+- Key-field accuracy is computed only over utterances whose reference contains a number/time (the summary shows the count, e.g. `2/7`); a hypothesis that adds numbers the reference lacks is not penalised by this metric (WER catches it).
+- Whisper with `language="bn"` on the synthetic audio often wrote Devanagari, Urdu/Arabic or even Telugu script instead of Bengali, so the romanizer handles any non-Latin script; the rules fallback only knows Bengali and Devanagari. `summary.md` lists the raw-output scripts per model and how many outputs stayed non-Latin.
+
+## Verified (by Devin, in the dev VM: 8-core x86 CPU, no GPU, Python 3.10)
+- `python -m pytest eval/tests` → 37 passed (normalization, number/time extraction, romanizer + cache, manifest/WAV checks, all splits shapes, end-to-end run with a fake plug-in, resume).
+- `python -m eval.run --config eval/config.yaml` on `eval/sample` end to end with whisper tiny/base/small/medium → `eval/results/summary.md` + per-model `worst.csv` (~9 min first run incl. model downloads, <1 s re-run).
+- `--splits eval/sample/splits.json` → evaluates only the 8 test clips / 2 speakers; without it → all 12 clips and the "evaluated ALL clips" notice.
+- Resume: run interrupted with Ctrl-C after 7/12 clips; re-run transcribed only the remaining 5.
+- Measured on this VM (synthetic sample): speed tiny 0.15, base 0.13, small 0.6, medium 6.4 s per audio second; peak RAM tiny 0.34 GB, base 0.44 GB, small 1.0 GB, medium 4.0 GB.
+
+## NOT verified (needs you)
+- **Gemini** (both as a model and as the LLM romanizer): no API key on the VM, so it was skipped and the rules romanizer was used. The request format follows Google's OpenAI-compatibility docs (`input_audio`, base64 WAV) but was never sent for real. First thing to check on your laptop: add the key to `.env`, run `--models gemini --limit 3`.
+- **Real recordings**: never seen by Devin. The sample WER/key-field numbers are from robotic TTS audio and say nothing about which model is best — do not use them for decision G1.
+- large-v3 (not run; disabled by default).
+- Your laptop: speed/RAM will differ from the VM; Windows/Mac paths not tested (only Linux).
+- The rules romanizer is approximate (e.g. inherent-vowel guessing); WER for "+ romanizer (rules)" rows includes its errors. Prefer the LLM romanizer for real numbers.
+
+---
+
+# Handover – Task C1 (previous task): Banglish speech collection page
 
 ## What was built
 All C1 files live in [`data-collector/`](data-collector/); paths below are relative to that folder.

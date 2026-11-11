@@ -1,0 +1,72 @@
+# Evaluation config.  Run from the repo folder:   python -m eval.run --config eval/config.yaml
+# Paths are relative to the repo folder. --data / --splits / --models on the command line override this file.
+
+data:
+  dir: eval/sample            # folder with manifest.csv and the WAV files (your export: e.g. ~/dataset)
+  manifest: manifest.csv
+  splits_file: null           # splits.json from make_splits.py; null = evaluate ALL clips (report says so)
+  split: test                 # which split to evaluate when splits_file is given
+
+output_dir: eval/results      # summary.md + one folder per model
+normalization: eval/normalization.yaml
+worst_n: 20
+isolate_models: true          # run each model in its own process so peak RAM is per model
+
+# OpenAI-compatible API used by Gemini and by the LLM romanizer. Key lives in .env, never here.
+api:
+  base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+  api_key_env: [GEMINI_API_KEY, GOOGLE_API_KEY]
+  model_env: GEMINI_MODEL     # model name comes from this env var ...
+  default_model: gemini-2.5-flash   # ... or this if the env var is not set
+
+# Whisper with language "bn" writes Bengali script (sometimes Devanagari/Urdu by mistake); references are
+# Banglish (Latin letters).
+# Models with `romanize: true` get their non-Latin output converted first, and are labelled
+# "<model> + romanizer (...)" in the report.
+romanizer:
+  method: llm                 # llm | rules | none
+  fallback: rules             # used (and shown in the label) if the LLM can't run, e.g. no API key. null = skip those models
+  cache_dir: eval/cache       # LLM answers are cached here, so re-runs cost nothing
+  prompt: >-
+    You convert Bengali-script text into romanized Banglish (the text may also be in Devanagari, Urdu or
+    another script because the speech model picked the wrong script; treat it as spoken Bangla): Bengali written in Latin letters the way
+    people in Bangladesh type in chat (e.g. "ami kal office e jabo"). Rules: keep the same words and order;
+    do not translate or fix anything; write English loanwords in normal English spelling (meeting, office,
+    laptop); write every number as digits (4, 850, 01712345678) and clock times like 4:30; output only the
+    converted text, nothing else.
+
+models:
+  # faster-whisper on CPU, int8. Models download automatically on first use (tiny 75 MB ... medium 1.5 GB).
+  - {name: whisper-tiny,   type: faster_whisper, size: tiny,   language: bn, device: cpu, compute_type: int8, beam_size: 5, romanize: true}
+  - {name: whisper-base,   type: faster_whisper, size: base,   language: bn, device: cpu, compute_type: int8, beam_size: 5, romanize: true}
+  - {name: whisper-small,  type: faster_whisper, size: small,  language: bn, device: cpu, compute_type: int8, beam_size: 5, romanize: true}
+  - {name: whisper-medium, type: faster_whisper, size: medium, language: bn, device: cpu, compute_type: int8, beam_size: 5, romanize: true}
+  - name: whisper-large-v3
+    type: faster_whisper
+    size: large-v3
+    language: bn
+    device: cpu
+    compute_type: int8
+    beam_size: 5
+    romanize: true
+    enabled: false
+    note: "skipped by default: ~3 GB download, ~4 GB RAM, very slow on a laptop CPU (run with --models whisper-large-v3)"
+
+  - name: gemini
+    type: openai_compat       # uses the `api:` settings above
+    romanize: false           # Gemini is asked for Banglish directly
+    prompt: >-
+      Transcribe this audio exactly. The speaker talks Bangla from Bangladesh, often mixed with English words.
+      Write the transcript in romanized Banglish (Bengali in Latin letters, as typed in chat, e.g.
+      "ami kal office e jabo"), English words in normal English spelling, numbers as digits (4, 850,
+      01712345678) and clock times like 4:30. Do not translate, summarize or add anything.
+      Output only the transcript.
+
+  # Your own model: write transcribe(path) -> text in a .py file (template: eval/plugins/example_plugin.py)
+  - name: example-plugin
+    type: plugin
+    file: eval/plugins/example_plugin.py
+    function: transcribe
+    options: {reply: ""}
+    romanize: false           # set true if your model outputs Bengali script
+    enabled: false

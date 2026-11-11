@@ -15,3 +15,7 @@ Send the **production** https link (not a Vercel preview link). Ask people to op
 
 ### Exporting the data
 `python3 data-collector/scripts/export_dataset.py` (needs ffmpeg and the admin key in `data-collector/.env`) writes 16 kHz mono WAVs and `manifest.csv`. Details: [data-collector/README.md](data-collector/README.md#exporting-the-dataset).
+
+## Speech model evaluation (Task B2)
+
+[`eval/`](eval/) compares speech models (faster-whisper tiny…large-v3, Gemini, your own plug-ins) on the exported recordings: WER, CER, key-field (numbers/times) accuracy, speed and RAM. See [`eval/README.md`](eval/README.md) for how to run it on your laptop.

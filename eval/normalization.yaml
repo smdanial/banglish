@@ -1,0 +1,135 @@
+# Text normalization used before scoring. Edit freely; it is applied to BOTH
+# the reference (actual_text) and every model's output, so it never favours one model.
+#
+# Always applied first (not configurable): lowercase, Bengali digits -> 0-9,
+# "1,500" -> "1500", punctuation removed, spaces collapsed.
+
+# Spelling variants: "what people/models write": "the one spelling we score with".
+# Whole words only. Multi-word keys are allowed ("o k": "ok").
+variants:
+  amii: ami
+  aami: ami
+  tumii: tumi
+  aaj: aj
+  ajke: aj
+  aajke: aj
+  kaal: kal
+  achhe: ache
+  acche: ache
+  achhi: achi
+  hbe: hobe
+  naa: na
+  kii: ki
+  okay: ok
+  oke: ok
+  "o k": ok
+  tk: taka
+  takaa: taka
+  shokal: sokal
+  sakal: sokal
+  bikel: bikal
+  bikale: bikal
+  shondhya: shondha
+  sondha: shondha
+  krbo: korbo
+  kortese: kortesi
+  kortechi: kortesi
+  lagse: lagche
+  lagchhe: lagche
+  khulse: khulche
+  vai: bhai
+  vaiya: bhaiya
+  amma: ammu
+  plz: please
+  pls: please
+  miting: meeting
+  ofis: office
+  offis: office
+  fon: phone
+  nambar: number
+  lambar: number
+
+# Key-field accuracy (numbers and times). Used ONLY for that metric, not for WER/CER.
+key_fields:
+  # Number words -> value. Lets "char jon" match "4 jon" and "ponerosho" match "1500".
+  number_words:
+    zero: 0
+    shunno: 0
+    shunyo: 0
+    one: 1
+    ek: 1
+    ak: 1
+    two: 2
+    dui: 2
+    three: 3
+    tin: 3
+    teen: 3
+    four: 4
+    char: 4
+    chaar: 4
+    five: 5
+    pach: 5
+    panch: 5
+    paach: 5
+    six: 6
+    choy: 6
+    chhoy: 6
+    seven: 7
+    sat: 7
+    saat: 7
+    eight: 8
+    aat: 8
+    nine: 9
+    noy: 9
+    ten: 10
+    dosh: 10
+    dos: 10
+    egaro: 11
+    baro: 12
+    tero: 13
+    choddo: 14
+    ponero: 15
+    sholo: 16
+    shotero: 17
+    atharo: 18
+    unish: 19
+    bish: 20
+    twenty: 20
+    pochish: 25
+    trish: 30
+    tirish: 30
+    chollish: 40
+    ponchash: 50
+    shat: 60
+    shottor: 70
+    ashi: 80
+    nobboi: 90
+  # Multipliers: "18 hajar" -> 18000, "22 hajar 500" -> 22500, "atsho" -> 800.
+  multipliers:
+    sho: 100
+    shoto: 100
+    hundred: 100
+    hajar: 1000
+    hazar: 1000
+    thousand: 1000
+    lakh: 100000
+    lac: 100000
+    koti: 10000000
+    crore: 10000000
+  # Number prefixes that only count when glued to a multiplier: "atsho" = 800, "dusho" = 200.
+  multiplier_prefixes:
+    at: 8
+    du: 2
+  # Endings glued to a number that do not change it: "4tay", "charta", "duita".
+  suffixes: [ta, ti, tay, tai, tae, tar, te, ter, i, ita, jon]
+  # Time words: "sharhe 5" (half past) -> 5:30, "pouney 8" (quarter to) -> 7:45, "sowa 3" -> 3:15.
+  time_words:
+    sharhe: 30
+    sarhe: 30
+    sare: 30
+    sade: 30
+    sowa: 15
+    shoa: 15
+    pouney: -15
+    poune: -15
+    pone: -15

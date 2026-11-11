@@ -2,3 +2,19 @@
 .env.*
 !.env.example
 node_modules/
+
+# audio never goes into git (real or synthetic)
+*.wav
+*.mp3
+*.m4a
+*.webm
+*.ogg
+*.opus
+*.flac
+eval/sample/wavs/
+# eval outputs: on real data these contain private transcripts
+eval/results/
+eval/cache/
+__pycache__/
+*.pyc
+.pytest_cache/
