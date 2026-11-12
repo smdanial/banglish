@@ -51,6 +51,16 @@ def pct(x):
     return "n/a" if x is None else f"{100 * x:.1f}%"
 
 
+def counts(c) -> str:
+    return ", ".join(f"{k} {n}" for k, n in c.most_common()) or "n/a"
+
+
+def script_cell(r) -> str:
+    if not r.get("script_n"):
+        return "n/a"
+    return f"{pct(r['script_ok'] / r['script_n'])} ({r['script_ok']}/{r['script_n']} {r['expected']})"
+
+
 def kf_cell(a: Agg):
     return "n/a (no numbers)" if a.kf is None else f"{pct(a.kf)} ({a.kf_ok}/{a.kf_n})"
 
@@ -58,7 +68,7 @@ def kf_cell(a: Agg):
 def write_utts(path: Path, utts, n=None):
     fields = ["path", "speaker_id", "category", "wer", "cer", "key_fields_ok", "reference", "hypothesis",
               "reference_normalized", "hypothesis_normalized", "reference_key_fields", "hypothesis_key_fields",
-              "raw_model_output"]
+              "raw_model_output", "raw_script", "language_requested", "language_used", "language_detected"]
     rows = sorted(utts, key=lambda u: (-u["wer"], -u["cer"]))[: n or len(utts)]
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
@@ -91,8 +101,9 @@ def write_summary(path: Path, ctx: dict, results: list, skipped: list):
         L.append(f"- Data problems: {ctx['problems']}")
     L.append("")
     L.append("## Overall\n")
-    L.append("| Model | WER | CER | Key-field acc | Speed (s per audio s) | Peak RAM | Clips |")
-    L.append("|---|---|---|---|---|---|---|")
+    L.append("| Model | Run variant | WER | CER | Key-field acc | % outputs in expected script | Speed (s per audio s) "
+             "| Peak RAM | Clips |")
+    L.append("|---|---|---|---|---|---|---|---|---|")
     order = sorted(results, key=lambda r: (-(r["overall"].kf if r["overall"].kf is not None else -1),
                                           r["overall"].wer if r["overall"].wer is not None else 9))
     for r in order:
@@ -100,7 +111,8 @@ def write_summary(path: Path, ctx: dict, results: list, skipped: list):
         speed = "n/a" if r["speed"] is None else f"{r['speed']:.2f}"
         ram = "n/a" if r["ram_mb"] is None else f"{r['ram_mb']:.0f} MB"
         clips = f"{a.clips}" + (f" ({r['failed']} failed)" if r["failed"] else "")
-        L.append(f"| {r['label']} | {pct(a.wer)} | {pct(a.cer)} | {kf_cell(a)} | {speed} | {ram} | {clips} |")
+        L.append(f"| {r['label']} | {r.get('variant') or '-'} | {pct(a.wer)} | {pct(a.cer)} | {kf_cell(a)} "
+                 f"| {script_cell(r)} | {speed} | {ram} | {clips} |")
     L.append("")
     L.append("Sorted by key-field accuracy, then WER. Lower WER/CER/speed/RAM is better; higher key-field acc is better.\n")
     if skipped:
@@ -116,6 +128,21 @@ def write_summary(path: Path, ctx: dict, results: list, skipped: list):
         for n in notes:
             L.append(f"- {n}")
         L.append("")
+    L.append("## Language and script check\n")
+    L.append("Per run, in config order. Counts are clips. \"Whisper detects\" is the language Whisper itself hears "
+             "in the audio (checked even when the language is forced).\n")
+    L.append("| Run | Run variant | % outputs in expected script | Raw output script | Language passed "
+             "| Language used for decoding | Whisper detects |")
+    L.append("|---|---|---|---|---|---|---|")
+    for r in results:
+        lg = r.get("lang") or {}
+        if r.get("type") == "faster_whisper":
+            cells = [counts(lg.get(k) or {}) if lg.get(k) else "not recorded" for k in ("requested", "used", "detected")]
+        else:
+            cells = ["n/a (not Whisper)"] * 3
+        L.append(f"| {r.get('name', r['label'])} | {r.get('variant') or '-'} | {script_cell(r)} "
+                 f"| {counts(r.get('scripts') or {})} | " + " | ".join(cells) + " |")
+    L.append("")
     L.append("## Per category\n")
     cats = sorted({c for r in results for c in r["by_cat"]})
     for c in cats:
@@ -137,6 +164,12 @@ def write_summary(path: Path, ctx: dict, results: list, skipped: list):
              "scoring. Errors in those rows are model errors PLUS romanizer errors. `rules` = rough offline "
              "converter (more error); `llm:<model>` = LLM converter. Raw model output is in "
              "`<model>/hypotheses.csv`.")
+    L.append("- **Run variant**: the same model run with different language settings (`run_variants:` in the "
+             "config): (a) `language=bn` forced, (b) auto-detect, (c) `language=en` forced with a romanized-Banglish "
+             "`initial_prompt`. Results per variant are in `<model>_<variant>/`.")
+    L.append("- **% outputs in expected script**: share of clips whose RAW model output (before any romanizer) is "
+             "mainly in the script that run should write: Bengali for `bn` and auto-detect, Latin for `en` and "
+             "Gemini. Devanagari/Arabic here means Whisper wrote Hindi/Urdu letters.")
     L.append("- **Speed**: processing seconds per second of audio on this machine (below 1.0 = faster than "
              "real time); model loading not included. For API models it includes network time.")
     L.append("- **Peak RAM**: highest memory use of the process that ran the model (includes Python itself, "

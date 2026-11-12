@@ -48,6 +48,14 @@ class PeakRSS:
         return peak / (1024 * 1024)
 
 
+def language_line(rec: dict) -> str:
+    from .textnorm import main_script
+    det = rec.get("language_detected")
+    det = f"{det} ({rec.get('language_detected_prob', 0):.2f})" if det else "not checked"
+    return (f"language passed={rec.get('language_requested')}, used={rec.get('language_used')}, "
+            f"Whisper detects={det}, output script={main_script(rec.get('raw', ''))}")
+
+
 def transcribe_all(job: dict) -> int:
     """job = {entry, api, todo: [[path, abs_path, duration], ...], out_dir, fingerprint, label}"""
     from . import models
@@ -62,6 +70,8 @@ def transcribe_all(job: dict) -> int:
         model = models.load(job["entry"], job["api"])
         load_s = time.perf_counter() - t0
         print(f"[{label}] model loaded in {load_s:.1f}s; transcribing {len(todo)} clips", flush=True)
+        if hasattr(model, "describe"):
+            print(f"[{label}] settings: {model.describe()}", flush=True)
         with open(tpath, "a", encoding="utf-8") as f:
             for i, (path, abs_path, dur) in enumerate(todo, 1):
                 rec = {"path": path, "fingerprint": job["fingerprint"], "audio_seconds": dur}
@@ -70,6 +80,10 @@ def transcribe_all(job: dict) -> int:
                     rec["raw"] = model.transcribe(abs_path)
                     rec["seconds"] = time.perf_counter() - t
                     done += 1
+                    li = getattr(model, "last_info", None)
+                    if li:
+                        rec.update(li)
+                        print(f"[{label}] {path}: {language_line(rec)}", flush=True)
                 except Exception as e:  # noqa: BLE001
                     rec["error"] = f"{type(e).__name__}: {str(e)[:200]}"
                     failed += 1
