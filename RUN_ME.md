@@ -193,6 +193,8 @@ Any `failed` in the last line → send me the whole output.
 
 Runs Whisper tiny, then base, then small, on your laptop's CPU, only on the test speakers from step 5. The first run downloads the models once (tiny 75 MB, base 145 MB, small 480 MB). No audio or text is uploaded anywhere.
 
+Each model runs **3 times**, once per language setting (the "run variants" in `eval/config.yaml`): (a) `language=bn` forced, (b) auto-detect, (c) `language=en` forced with a few Banglish example sentences. For every clip it prints the language it gave Whisper, the language Whisper used, and the language Whisper hears.
+
 **7a. Quick mode first:** `--quick` evaluates only the first 30 test clips, to check that everything works (about 2-6 minutes on a laptop, plus the downloads):
 ```bash
 python -m eval.run --config eval/config.yaml --data ~/banglish-data/dataset --splits ~/banglish-data/splits.json --split test --models whisper-tiny,whisper-base,whisper-small --output ~/banglish-data/results --quick
@@ -201,13 +203,18 @@ Expected output (shortened):
 ```
 WARNING: LLM romanizer unavailable (no API key (GEMINI_API_KEY or GOOGLE_API_KEY not set in .env / environment)); used 'rules' instead
 30 clips, 3 speakers. Split: test from `splits.json`; limited to first 30 clips (--quick)
-== whisper-tiny + romanizer (rules): 0 already done, 30 to transcribe
-[whisper-tiny] model loaded in 3.3s; transcribing 30 clips
-[whisper-tiny] 10/30
+== whisper-tiny + romanizer (rules) [(a) language=bn forced]: 0 already done, 30 to transcribe
+[whisper-tiny:bn] model loaded in 1.4s; transcribing 30 clips
+[whisper-tiny:bn] settings: faster-whisper language='bn' (forced), no initial_prompt
+[whisper-tiny:bn] wavs/....wav: language passed=bn, used=bn, Whisper detects=bn (0.99), output script=Latin
 ...
-== whisper-base + romanizer (rules): 0 already done, 30 to transcribe
+== whisper-tiny + romanizer (rules) [(b) language auto-detect]: 0 already done, 30 to transcribe
 ...
-== whisper-small + romanizer (rules): 0 already done, 30 to transcribe
+== whisper-tiny + romanizer (rules) [(c) language=en forced + romanized-Banglish initial_prompt]: 0 already done, 30 to transcribe
+...
+== whisper-base + romanizer (rules) [(a) language=bn forced]: 0 already done, 30 to transcribe
+...
+== whisper-small + romanizer (rules) [(c) language=en forced + romanized-Banglish initial_prompt]: 0 already done, 30 to transcribe
 ...
 Wrote /home/YOU/banglish-data/results/summary.md
 ```
@@ -221,7 +228,7 @@ Expected output: like 7a, but without `limited to first 30 clips`, ending with `
 
 Stopped it halfway (Ctrl + C, laptop went to sleep)? Run the same command again: clips that are done are skipped.
 
-**How long and how much memory.** Measured on a test machine with fake recordings of about 5 seconds each; your laptop may be up to 2x slower. Time grows with the minutes of audio, not just the number of clips.
+**How long and how much memory.** Measured on a test machine with fake recordings of about 5 seconds each; your laptop may be up to 2x slower. Time grows with the minutes of audio, not just the number of clips. The times are for ONE run variant; all 3 variants take about 3x as long. To run only one variant, add it to the name, e.g. `--models whisper-small:bn` (ids: `bn`, `auto`, `en-prompt`).
 
 | Model | First-time download | Time per 100 clips, 4-core laptop | Time per 100 clips, 2-core laptop | RAM it uses |
 |---|---|---|---|---|
@@ -229,10 +236,11 @@ Stopped it halfway (Ctrl + C, laptop went to sleep)? Run the same command again:
 | whisper-base | 145 MB | about 1.5 min | about 2 min | about 0.5 GB |
 | whisper-small | 480 MB | about 3 min | about 6 min | about 0.8-1.0 GB |
 | **all three** | 700 MB | **about 6 min** | **about 10 min** | 1 GB at a time |
+| **all three, 3 variants each** | 700 MB | **about 18 min** | **about 30 min** | 1 GB at a time |
 
 The models run one after another, so 2 GB of free RAM is enough (close Chrome if your laptop has only 4 GB). tiny is not always faster than base: when it is confused it repeats words, which takes longer.
 
-**Results:** `~/banglish-data/results/summary.md` (the table you read), plus one folder per model with `worst.csv` (the 20 worst clips, with what people said and what the model heard: private, don't send).
+**Results:** `~/banglish-data/results/summary.md` (the table you read; the "Run variant" column says which language setting, and "% outputs in expected script" shows at a glance when Whisper wrote Hindi or Urdu letters instead of Bengali), plus one folder per model and variant (e.g. `whisper-small_bn`) with `worst.csv` (the 20 worst clips, with what people said and what the model heard: private, don't send).
 ```bash
 xdg-open ~/banglish-data/results/summary.md
 ```

@@ -35,16 +35,40 @@ romanizer:
     laptop); write every number as digits (4, 850, 01712345678) and clock times like 4:30; output only the
     converted text, nothing else.
 
+# Run variants: every Whisper model below runs once per variant listed in its `variants:`. Results are named
+# <model>:<id> (folder <model>_<id>), and summary.md shows the label in its "Run variant" column.
+# `--models whisper-small` runs all its variants; `--models whisper-small:bn` runs just one.
+# expected_script = the script the raw output should be in; summary.md shows "% outputs in expected script".
+run_variants:
+  - id: bn
+    label: "(a) language=bn forced"
+    language: bn
+    expected_script: Bengali
+  - id: auto
+    label: "(b) language auto-detect"
+    language: auto            # faster-whisper gets language=None and picks the language itself per clip
+    expected_script: Bengali
+  - id: en-prompt
+    label: "(c) language=en forced + romanized-Banglish initial_prompt"
+    language: en
+    expected_script: Latin
+    # Short Banglish sentences that are NOT in the recording prompts, so they can't leak test answers.
+    initial_prompt: >-
+      Ami ekhon bashay achi, tumi kokhon ashbe? Ajke onek kaj ache, 3 tar por phone dibo.
+      Bazar theke 2 kg chal ar ektu dal ante hobe.
+
 models:
   # faster-whisper on CPU, int8. Models download automatically on first use (tiny 75 MB ... medium 1.5 GB).
-  - {name: whisper-tiny,   type: faster_whisper, size: tiny,   language: bn, device: cpu, compute_type: int8, beam_size: 5, romanize: true}
-  - {name: whisper-base,   type: faster_whisper, size: base,   language: bn, device: cpu, compute_type: int8, beam_size: 5, romanize: true}
-  - {name: whisper-small,  type: faster_whisper, size: small,  language: bn, device: cpu, compute_type: int8, beam_size: 5, romanize: true}
-  - {name: whisper-medium, type: faster_whisper, size: medium, language: bn, device: cpu, compute_type: int8, beam_size: 5, romanize: true}
+  # Every run logs per clip the language passed to faster-whisper, the language it decoded with and the
+  # language Whisper detects in the audio (transcripts.jsonl, hypotheses.csv, summary.md).
+  - {name: whisper-tiny,   type: faster_whisper, size: tiny,   variants: [bn, auto, en-prompt], device: cpu, compute_type: int8, beam_size: 5, romanize: true}
+  - {name: whisper-base,   type: faster_whisper, size: base,   variants: [bn, auto, en-prompt], device: cpu, compute_type: int8, beam_size: 5, romanize: true}
+  - {name: whisper-small,  type: faster_whisper, size: small,  variants: [bn, auto, en-prompt], device: cpu, compute_type: int8, beam_size: 5, romanize: true}
+  - {name: whisper-medium, type: faster_whisper, size: medium, variants: [bn, auto, en-prompt], device: cpu, compute_type: int8, beam_size: 5, romanize: true}
   - name: whisper-large-v3
     type: faster_whisper
     size: large-v3
-    language: bn
+    variants: [bn, auto, en-prompt]
     device: cpu
     compute_type: int8
     beam_size: 5
@@ -52,8 +76,11 @@ models:
     enabled: false
     note: "skipped by default: ~3 GB download, ~4 GB RAM, very slow on a laptop CPU (run with --models whisper-large-v3)"
 
+  # Baseline: Gemini asked for romanized Banglish directly (no romanizer). Needs GEMINI_API_KEY in .env.
   - name: gemini
     type: openai_compat       # uses the `api:` settings above
+    variant_label: "baseline: romanized-Banglish prompt"
+    expected_script: Latin
     romanize: false           # Gemini is asked for Banglish directly
     prompt: >-
       Transcribe this audio exactly. The speaker talks Bangla from Bangladesh, often mixed with English words.

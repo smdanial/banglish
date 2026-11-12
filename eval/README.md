@@ -17,7 +17,16 @@
 
 **Try it without real data:** `python -m eval.run --config eval/config.yaml` uses the 12-clip synthetic sample in `eval/sample/`. The sample is Google text-to-speech reading Bengali-script versions of our prompts; the audio files are generated on the first run and are never committed. Tests: `python -m pytest eval/tests`.
 
-**Models** (`eval/config.yaml`, `models:`): faster-whisper tiny/base/small/medium (CPU, int8, `language: bn`), large-v3 (disabled by default), Gemini through its OpenAI-compatible API (asked for Banglish directly), and `example-plugin`. To add your own model, copy `eval/plugins/example_plugin.py`, write `transcribe(path) -> text`, and add an entry like `example-plugin` with `enabled: true`. Set `romanize: true` if it writes Bengali (or any non-Latin) script.
+**Models** (`eval/config.yaml`, `models:`): faster-whisper tiny/base/small/medium (CPU, int8), large-v3 (disabled by default), a Gemini baseline through its OpenAI-compatible API (asked for romanized Banglish directly), and `example-plugin`. To add your own model, copy `eval/plugins/example_plugin.py`, write `transcribe(path) -> text`, and add an entry like `example-plugin` with `enabled: true`. Set `romanize: true` if it writes Bengali (or any non-Latin) script.
+
+**Run variants** (`run_variants:` in the config): each Whisper model runs once per variant in its `variants:` list, named `<model>:<id>` (results folder `<model>_<id>`):
+- `bn`: (a) `language="bn"` forced.
+- `auto`: (b) auto-detect (faster-whisper gets `language=None`).
+- `en-prompt`: (c) `language="en"` forced, with an `initial_prompt` of short romanized Banglish sentences, so Whisper writes Latin letters itself.
+
+`--models whisper-small` runs all its variants and `--models whisper-small:bn` runs one. For every clip, `transcripts.jsonl` and `hypotheses.csv` record the language passed to faster-whisper (`language_requested`), the language it decoded with (`language_used`), the language Whisper detects in the audio (`language_detected`, an extra detection pass when the language is forced; `detect_language: false` turns it off) and the script of the raw output (`raw_script`). The console prints the same per clip.
+
+**% outputs in expected script** (summary.md): the share of clips whose raw output (before the romanizer) is mostly in the variant's `expected_script`: Bengali for `bn`/`auto`, Latin for `en-prompt` and Gemini. The "Language and script check" table in summary.md lists language passed / used / detected per run.
 
 **Bengali script vs Banglish:** with `language: bn`, Whisper writes Bengali script. Our references are Latin. Models with `romanize: true` get converted first, and the report labels them `whisper-small + romanizer (llm:gemini-…)`, so the score includes romanizer mistakes. The romanizer is set under `romanizer:` in the config:
 - `llm`: the default. Answers are cached in `eval/cache/`.

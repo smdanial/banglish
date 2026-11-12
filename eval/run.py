@@ -46,8 +46,45 @@ def slug(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("_") or "model"
 
 
+LABEL_KEYS = ("name", "enabled", "romanize", "note", "base_name", "variant_label", "expected_script")
+
+
+def expand_variants(entries: list, variants: list) -> list:
+    """An entry with `variants: [bn, auto, ...]` becomes one entry per run variant (from `run_variants:`),
+    named <name>:<id>; the variant's settings (language, initial_prompt, ...) override the entry's."""
+    by_id = {str(v["id"]): v for v in variants or []}
+    out = []
+    for e in entries:
+        ids = e.get("variants")
+        if not ids:
+            out.append(e)
+            continue
+        ids = list(by_id) if ids == "all" else ([ids] if isinstance(ids, str) else ids)
+        for vid in map(str, ids):
+            if vid not in by_id:
+                raise SystemExit(f"{e.get('name')}: unknown run variant '{vid}' (known: {', '.join(by_id) or 'none'}; "
+                                 "see run_variants: in the config)")
+            v = by_id[vid]
+            ne = {k: val for k, val in e.items() if k != "variants"}
+            ne.update({k: val for k, val in v.items() if k not in ("id", "label")})
+            ne.update(name=f"{e['name']}:{vid}", base_name=e["name"], variant_label=v.get("label") or vid)
+            out.append(ne)
+    return out
+
+
+def expected_script(e: dict) -> str:
+    """Script the raw model output should be in: Bengali for Whisper in Bangla, Latin for English/Banglish."""
+    if e.get("expected_script"):
+        return str(e["expected_script"]).title()
+    if e.get("type") == "faster_whisper":
+        return "Latin" if str(e.get("language", "bn")).lower() == "en" else "Bengali"
+    if e.get("type") == "openai_compat":
+        return "Latin"
+    return "Bengali" if e.get("romanize") else "Latin"
+
+
 def fingerprint(entry: dict, api: dict) -> str:
-    keys = {k: v for k, v in entry.items() if k not in ("name", "enabled", "romanize", "note")}
+    keys = {k: v for k, v in entry.items() if k not in LABEL_KEYS}
     if entry.get("type") == "openai_compat":
         from .models.openai_compat import resolve
         keys["_model"] = resolve({**api, **entry})[2]
@@ -112,7 +149,7 @@ def main(argv=None):
     worst_n = int(cfg.get("worst_n", 20))
 
     from .dataset import load_manifest, select_split
-    from .report import group, machine_info, score_utt, write_summary, write_utts
+    from .report import counts, group, machine_info, score_utt, write_summary, write_utts
     from .textnorm import Normalizer, has_non_latin, main_script
     from .worker import run_job
 
@@ -137,16 +174,24 @@ def main(argv=None):
     print(f"{len(clips)} clips, {len({c.speaker_id for c in clips})} speakers. {split_note.replace('*', '')}")
 
     norm = Normalizer.from_file(cfg_path(cfg.get("normalization", "eval/normalization.yaml")))
-    entries = [m for m in (cfg.get("models") or [])]
-    wanted = set(args.models.split(",")) if args.models else None
-    skipped, to_run = [], []
+    entries = expand_variants([m for m in (cfg.get("models") or [])], cfg.get("run_variants"))
+    wanted = {w.strip() for w in args.models.split(",") if w.strip()} if args.models else None
+    if wanted:
+        known = {e.get("name") or e.get("type") for e in entries} | {e["base_name"] for e in entries if e.get("base_name")}
+        for w in sorted(wanted - known):
+            print(f"WARNING: --models {w}: no such model in the config (known: {', '.join(sorted(known))})",
+                  file=sys.stderr)
+    skipped, to_run, skipped_bases = [], [], set()
     for e in entries:
         name = e.get("name") or e.get("type")
+        base = e.get("base_name") or name
         if wanted is not None:
-            if name not in wanted:
+            if name not in wanted and base not in wanted:
                 continue
         elif not e.get("enabled", True):
-            skipped.append((name, e.get("note") or "disabled in config (enabled: false)"))
+            if base not in skipped_bases:
+                skipped.append((base, e.get("note") or "disabled in config (enabled: false)"))
+                skipped_bases.add(base)
             continue
         from .models import check
         why = check(e, api)
@@ -174,8 +219,11 @@ def main(argv=None):
         recs = read_records(out_dir, fp)
         todo = [[c.path, str(c.abs_path), c.duration] for c in clips
                 if c.path not in recs or "error" in recs[c.path]]
-        label = name + (f" + romanizer ({romanizer.label})" if e.get("romanize") else "")
-        print(f"== {label}: {len(clips) - len(todo)} already done, {len(todo)} to transcribe")
+        label = (e.get("base_name") or name) + (f" + romanizer ({romanizer.label})" if e.get("romanize") else "")
+        variant = e.get("variant_label") or ""
+        exp = expected_script(e)
+        print(f"== {label}{' [' + variant + ']' if variant else ''}: {len(clips) - len(todo)} already done, "
+              f"{len(todo)} to transcribe")
         if todo:
             job = {"entry": e, "api": api, "todo": todo, "out_dir": str(out_dir), "fingerprint": fp, "label": name}
             code = run_job(job, isolate=not args.no_isolate and cfg.get("isolate_models", True))
@@ -184,14 +232,21 @@ def main(argv=None):
             recs = read_records(out_dir, fp)
 
         utts, failed, sec, aud, nonlatin_left = [], 0, 0.0, 0.0, 0
-        scripts = Counter()
+        scripts, lang = Counter(), {k: Counter() for k in ("requested", "used", "detected")}
+        script_ok = no_lang = 0
         for c in clips:
             r = recs.get(c.path)
             if r is None or "error" in r:
                 failed += 1
                 continue
             raw = r.get("raw", "")
-            scripts[main_script(raw)] += 1
+            raw_script = main_script(raw)
+            scripts[raw_script] += 1
+            script_ok += raw_script == exp
+            for k in lang:
+                if r.get(f"language_{k}"):
+                    lang[k][r[f"language_{k}"]] += 1
+            no_lang += "language_used" not in r
             hyp = romanizer(raw) if e.get("romanize") else raw
             if has_non_latin(hyp):
                 nonlatin_left += 1
@@ -201,7 +256,9 @@ def main(argv=None):
             w_err, w_n, c_err, c_n = score_utt(rn, hn)
             rk, hk = norm.key_fields(c.reference), norm.key_fields(hyp)
             utts.append({
-                "path": c.path, "speaker_id": c.speaker_id, "category": c.category,
+                "path": c.path, "speaker_id": c.speaker_id, "category": c.category, "raw_script": raw_script,
+                "language_requested": r.get("language_requested", ""), "language_used": r.get("language_used", ""),
+                "language_detected": r.get("language_detected", ""),
                 "reference": c.reference, "hypothesis": hyp, "raw_model_output": raw,
                 "reference_normalized": rn, "hypothesis_normalized": hn,
                 "reference_key_fields": " ".join(sorted(rk.elements())),
@@ -222,14 +279,24 @@ def main(argv=None):
         notes = []
         if failed:
             notes.append(f"{name}: {failed} clips failed to transcribe (re-run to retry); excluded from its scores.")
-        if set(scripts) - {"Latin", "Empty"}:
-            notes.append(f"{name}: script of raw output: " + ", ".join(f"{s} {n}" for s, n in scripts.most_common()))
+        if set(scripts) - {exp}:
+            notes.append(f"{name}: raw output should be {exp} script, but was: {counts(scripts)}")
+        if e.get("type") == "faster_whisper":
+            if no_lang:
+                notes.append(f"{name}: language not recorded for {no_lang} clips (transcribed before language "
+                             f"logging was added; delete {out_dir / 'transcripts.jsonl'} and re-run to record it)")
+            bad = sum(n for l, n in lang["used"].items() if lang["requested"] and l not in lang["requested"])
+            if bad and "auto" not in lang["requested"]:
+                notes.append(f"{name}: WARNING: faster-whisper decoded {bad} clips in a different language than "
+                             f"the one passed ({counts(lang['requested'])}): {counts(lang['used'])}")
         if nonlatin_left:
             notes.append(f"{name}: {nonlatin_left} outputs still contain non-Latin letters after "
                          f"{'romanization' if e.get('romanize') else 'transcription (romanize: false)'}.")
         if e.get("romanize") and romanizer and romanizer.fallbacks:
             notes.append(f"{name}: LLM romanizer failed on {romanizer.fallbacks} clips; rules romanizer used for those.")
-        results.append({"label": label, "overall": overall, "by_cat": by_cat, "failed": failed,
+        results.append({"label": label, "name": name, "variant": variant, "type": e.get("type"),
+                        "expected": exp, "script_ok": script_ok, "script_n": sum(scripts.values()),
+                        "scripts": scripts, "lang": lang, "overall": overall, "by_cat": by_cat, "failed": failed,
                         "speed": sec / aud if aud else None, "ram_mb": peak_ram(out_dir, fp), "notes": notes})
 
     ctx = {
